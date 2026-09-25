@@ -1,0 +1,1506 @@
+
+
+
+
+
+
+(def constant TT_ELEMENT_NAME "'ttaroModConfig'")
+(def constant TT_POSITION_FULLKEY "'ttaro.ttModConfig.position'")
+
+(def constant TT_CONFIG_WINDOW_WIDTH 480px)
+(def constant TT_CONFIG_SECTION_MARGIN 20px)
+
+(def constant TT_CONFIG_OPTION_WIDTH 205px)
+(def constant TT_CONFIG_OPTION_CONTROL_WIDTH 140px)
+(def constant TT_CONFIG_OPTION_VALUE_WIDTH 40px)
+(def constant TT_CONFIG_OPTION_VALUE_MARGIN 7px)
+(def constant TT_CONFIG_RESET_BUTTON_SIZE 18px)
+(def constant TT_CONFIG_COLOR_SWATCH_SIZE 24px)
+
+
+(def constant TT_CONFIG_GROUP_INDENT 16px)
+(def constant TT_CONFIG_LABEL_CONTROL_GAP 15px)
+
+
+(def constant TT_MOD_SELECTOR_WIDTH 320px)
+(def constant TT_MOD_SELECTOR_DROPDOWN_WIDTH 340px)
+
+
+(def constant TT_CONFIG_PAGINATE_MIN 7)
+
+(def constant TT_PAGE_ARROW_WIDTH 8px)
+(def constant TT_PAGE_ARROW_HEIGHT 13px)
+
+(def constant TT_PAGE_ARROW_HIT_W 30px)
+(def constant TT_PAGE_ARROW_HIT_H 26px)
+
+(def constant TT_PAGE_ARROW_ALPHA_OFF 0.3)
+
+(def constant TT_ELEMENT_SIZE {
+	WIDTH: 50,
+	HEIGHT: 30
+})
+
+(def constant TT_MAX_GROUP_DEPTH 8)
+
+(def element TTaroModUtils() layout=true
+	(scope
+		(macro TT_DRAGGABLE_POSITION _fullKey="TT_POSITION_FULLKEY")
+	)
+
+	(block
+		(style
+			(position = "absolute")
+			(bind left "dragX")
+			(bind top "dragY")
+			(width = "TT_ELEMENT_SIZE.WIDTH")
+			(height = "TT_ELEMENT_SIZE.HEIGHT")
+		)
+
+		(block
+			(class $FullsizeAbsolute)
+			(style (backgroundColor = 0x01000000))
+			(macro TT_DRAGGABLE _fullKey="TT_POSITION_FULLKEY")
+		)
+		(hblock
+			(element TT_OptionButtonElement)
+			(element TT_DragTitleElement)
+		)
+	)
+)
+
+(def element TT_OptionButtonElement () layout=true
+	(scope
+		(macro TT_OPENER_SCOPE)
+	)
+	(dispatch evTTSelfHideInfotip args="{}" (bind trigger "isMouseActive"))
+
+	(controller $Tooltip
+		(renderer='TT_ModConfigsWindowElement')
+		(macro TT_CONFIG_BEHAVIOUR)
+
+
+		(bindcall externalCall 'direct.action' "['mod.setCursorHold', [true]]" init=false watch=false on=evStartShow)
+		(bindcall externalCall 'direct.action' "['mod.setCursorHold', [false]]" init=false watch=false on=evHide)
+	)
+
+
+	(bindcall externalCall 'direct.action' "['mod.setCursorHold', [false]]" init=false watch=false on='removedFromStage')
+
+	(style
+		(width = 30)
+		(height = 30)
+	)
+
+	(element ButtonSettingsSmall
+		(style
+			(position = "absolute")
+			(left = "3px")
+			(top = "3px")
+			(bind alpha "isMouseActive ? 1.0 : 0.4")
+		)
+	)
+)
+
+(def element TT_ModConfigsWindowElement () layout=true
+	(scope
+
+		(macro TT_GET_REGISTRY)
+
+
+		(var uiEntity:gfx  = "$datahub.getPrimaryEntity(CC.mods_DataComponent, 'modPrefs.uiState')")
+		(var uiComp:gfx    = "uiEntity ? uiEntity.mods_DataComponent : null")
+		(var selectedSlug:str = "uiComp && uiComp.data.selectedTab ? uiComp.data.selectedTab : ''" (event "uiComp.evDataChanged"))
+
+		(var selectedModIndex:number = "uiComp && null != uiComp.data.selectedTabIndex ? uiComp.data.selectedTabIndex : 0" (event "uiComp.evDataChanged"))
+
+		(var noModSelectedText:str = "tr('IDS_TT_SELECT_MOD_TO_CONFIGURE')")
+	)
+
+	(style
+		(align = "middle|center")
+		(width = "TT_CONFIG_WINDOW_WIDTH + 4")
+	)
+
+	(element TT_BackgroundElement)
+
+
+
+	(block
+		(style
+			(position = "absolute")
+			(right = 4px)
+			(top = 4px)
+			(width = 30px)
+			(height = 30px)
+			(align = "middle|center")
+		)
+		(element TT_WindowCloseButton _dispatchedEv = "'evTTUpHideInfotip'")
+	)
+	(block
+		(style
+			(position = "absolute")
+			(right = 38px)
+			(top = 4px)
+			(width = 30px)
+			(height = 30px)
+		)
+		(element TT_FrameworkGearElement)
+	)
+
+
+	(block
+		(style
+			(width = "TT_CONFIG_WINDOW_WIDTH")
+			(align = "center|middle")
+			(marginTop = "TT_CONFIG_SECTION_MARGIN")
+		)
+		(block
+			(style
+				(width = "TT_CONFIG_WINDOW_WIDTH")
+				(align = "center|middle")
+			)
+			(element TT_ArrowSelectElement
+				_items = "mods"
+				_index = "selectedModIndex"
+				_valueKey = "'slug'"
+				_selectedValue = "selectedSlug"
+				_writePath = "'selectedTab'"
+				_boxWidth = "TT_MOD_SELECTOR_WIDTH"
+				_dropWidth = "TT_MOD_SELECTOR_DROPDOWN_WIDTH"
+			)
+
+			(tf
+				(bind visible "selectedSlug == ''")
+				(class $TextDefaultBold)
+				(style
+					(position = "absolute")
+					(hcenter = 0%)
+					(vcenter = 0%)
+					(fontSize = 20)
+					(alpha = "TS")
+					(hitTest = false)
+					(elideMode = true)
+					(textAlign = "center")
+					(maxWidth = "TT_MOD_SELECTOR_WIDTH - 40")
+				)
+				(bind text "noModSelectedText")
+			)
+		)
+	)
+
+
+	(controller $Repeat renderer='TT_ModConfigSlot'
+		(bind count "mods.length")
+		(args
+			_modData = "mods[$index]"
+			_active  = "mods[$index].slug == selectedSlug"
+		)
+	)
+
+	(block
+		(bind visible "selectedSlug == ''")
+		(style
+			(marginTop = "TT_CONFIG_SECTION_MARGIN")
+			(marginBottom = "TT_CONFIG_SECTION_MARGIN")
+			(width = 100%)
+			(align = "middle|center")
+		)
+		(element TT_HorizontalDivider _margin=5px _alpha=2 _width=90%)
+		(tf
+			(style
+				(marginTop = 5px)
+				(alpha = "TS")
+			)
+			(class $TextDefaultBold17NM)
+			(bind text "noModSelectedText")
+		)
+	)
+)
+
+
+(def element TT_ModConfigSlot (_modData:gfx, _active:bool=false) layout=true
+	(style
+		(width = 100%)
+		(align = "middle|center")
+	)
+	(controller $Instance renderer='TT_ModConfigsElement'
+		(bind enabled "_active")
+		(args _modData = "_modData")
+	)
+)
+
+
+(def element TT_FrameworkGearElement () layout=true
+	(scope
+		(event evHideInfotip)
+		(event evTTSelfHideInfotip)
+		(event evTTUpHideInfotip)
+
+		(event evTTDownCloseAll)
+
+		(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
+		(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
+
+
+		(macro TT_POPUP_DEPTH_SCOPE _tag="'gear'")
+
+		(macro TT_GET_FRAMEWORK)
+		(var hasFramework:bool = "fwComp ? true : false" (event "fwComp.evDataChanged"))
+	)
+	(dispatch evTTSelfHideInfotip args="{}" (bind trigger "isMouseActive"))
+
+	(bind visible "hasFramework")
+	(style
+		(width = 30)
+		(height = 30)
+	)
+
+
+	(controller $Tooltip
+		(renderer='TT_FrameworkSettingsElement')
+
+		(macro TT_POPUP_BEHAVIOUR _align="innerTop|outerLeft" _offset="{ x: 0, y: 0 }")
+		(bindcall hide (event "evHideInfotip") (event "evTTSelfHideInfotip") (event "evTTUpHideInfotip"))
+
+	)
+
+	(element ButtonSettingsSmall
+		(style
+			(position = "absolute")
+			(left = "3px")
+			(top = "3px")
+			(bind alpha "isMouseActive ? 1.0 : 0.4")
+		)
+	)
+)
+
+
+(def element TT_FrameworkSettingsElement () layout=true
+	(scope
+		(macro TT_GET_FRAMEWORK)
+		(var fwData:gfx    = "fwComp ? fwComp.data : null" (event "fwComp.evDataChanged"))
+
+		(var titleText:str = "tr('IDS_MODAL_WINDOW_TITLE_PREFERENCES')")
+	)
+
+	(style
+		(align = "middle|center")
+		(width = "TT_CONFIG_WINDOW_WIDTH + 4")
+	)
+
+	(element TT_BackgroundElement)
+
+	(block
+		(style
+			(marginTop = "TT_CONFIG_SECTION_MARGIN")
+			(width = 100%)
+			(align = "middle|center")
+		)
+		(tf
+			(class $TextDefaultBold17NM)
+			(style (alpha = "TS"))
+			(bind text "titleText")
+		)
+		(element TT_HorizontalDivider _margin=5px _alpha=2 _width=90%)
+	)
+
+	(controller $Instance renderer='TT_ModConfigsElement'
+		(bind enabled "fwData != null")
+		(args _modData = "fwData")
+	)
+)
+
+(def element TT_ModConfigsElement (_modData:gfx)layout=true
+	(scope
+		(macro MOUSE_HANDLER_SCOPE)
+		(macro STAGE_SIZE)
+		(var clampedMaxHeight:number = "min(stageHeight - 300, stageHeight * 0.7)")
+
+		(var tree:array = "_modData && _modData.tree ? _modData.tree : []")
+		(var slug:str   = "_modData && _modData.slug ? _modData.slug : ''")
+
+
+		(var pages:array = "_modData && _modData.pages ? _modData.pages : []")
+		(var isPaginated:bool = "pages.length >= TT_CONFIG_PAGINATE_MIN")
+
+		(var pgEntity:gfx  = "$datahub.getPrimaryEntity(CC.mods_DataComponent, 'modPrefs.uiState')")
+		(var pgComp:gfx    = "pgEntity ? pgEntity.mods_DataComponent : null")
+		(var pgMap:gfx     = "pgComp ? pgComp.data.selectedPage : null" (event "pgComp.evDataChanged"))
+
+		(var storedPage:number = "null != pgMap ? pgMap[slug] : 0")
+
+		(var pageIndex:number = "storedPage < pages.length ? storedPage : 0")
+		(var pageIdx:array = "isPaginated ? pages[pageIndex].idx : []")
+
+
+
+		(var pageGroup:gfx = "isPaginated && pageIdx.length == 1 ? tree[pageIdx[0]] : null")
+		(var pageIsGroup:bool = "null != pageGroup && pageGroup.kind == 'group'")
+		(var pageNodes:array = "pageIsGroup && pageGroup.children ? pageGroup.children : []")
+
+		(var pageGroupKey:str = "pageIsGroup && pageGroup.key ? pageGroup.key : ''")
+		(macro TT_GET_PREF _varName="'pageGate'" _key="pageGroupKey")
+		(var isPageApplicable:bool = "null == pageGateC ? true : pageGate.visible")
+	)
+	(style
+		(align = "middle|center")
+		(width="TT_CONFIG_WINDOW_WIDTH")
+		(marginBottom = 15px)
+	)
+
+	(controller $Animation
+		(bindcall play duration="0.25"  from={alpha:0} to={alpha:1} watch=false action="killAll" easing="Easing.cubic_in" (bind trigger "_modData"))
+	)
+
+
+	(bindcall externalCall 'inputMapping.onAction' "['battleChat.rollOverChanged', { rollOver: rollOver }]" init=false watch=false (bind trigger "rollOver"))
+	(macro MOUSE_EVENTS_DISPATCHER)
+
+
+	(controller $Instance renderer='TT_ArrowSelectElement'
+		(bind enabled "isPaginated")
+		(args
+			_items = "pages"
+			_index = "pageIndex"
+			_valueKey = "'value'"
+			_selectedValue = "pageIndex"
+
+			_writePath = "['selectedPage', slug]"
+			_boxWidth = "TT_MOD_SELECTOR_WIDTH"
+			_dropWidth = "TT_MOD_SELECTOR_DROPDOWN_WIDTH"
+		)
+	)
+
+	(scrollArea
+		(style
+			(backgroundColor = 0x01000000)
+			(width = "TT_CONFIG_WINDOW_WIDTH")
+			(bind maxHeight "clampedMaxHeight")
+		)
+
+		(verticalSlider='ScrollBarVLight')
+		(topShadow='ScrollAreaShadowTop')
+		(bottomShadow='ScrollAreaShadowBottom')
+
+		(activeControlsAlpha=0.7)
+		(inactiveControlsAlpha=0.2)
+
+		(wheelScrollSpeed = "1.5")
+		(wheelScrollAcceleration = "0.9")
+		(maxScrollingAnimatedDistance = "150")
+
+		(animationDuration=0.2)
+		(animationEasing="Easing.cubic_out")
+
+		(hscrollPolicy='off')
+		(vscrollPolicy='auto')
+		(repeatController='TT_NodeElementRepeat')
+
+		(content
+			(style
+				(width = "TT_CONFIG_WINDOW_WIDTH")
+				(align = "middle|center")
+				(bind alpha "isPageApplicable ? 1.0 : 0.3")
+				(bind hitTest "isPageApplicable")
+			)
+
+			(controller $Repeat renderer='TT_NodeElement' name='TT_NodeElementRepeat'
+				(bind count "!isPaginated ? tree.length : (pageIsGroup ? pageNodes.length : pageIdx.length)")
+				(args
+					_node  = "!isPaginated ? tree[$index] : (pageIsGroup ? pageNodes[$index] : tree[pageIdx[$index]])"
+					_slug  = "slug"
+					_depth = "0"
+				)
+			)
+		)
+	)
+)
+
+
+
+(def element TT_ArrowButton (_enabled:bool=true, _flip:bool=false, _methods:array=[]) layout=true
+	(scope
+		(macro MOUSE_HANDLER_SCOPE)
+		(var isHot:bool  = "_enabled && rollOver && !mouseDown")
+		(var isPressed:bool = "_enabled && mouseDown")
+		(var glyphAlpha:number = "_enabled ? 1.0 : TT_PAGE_ARROW_ALPHA_OFF")
+	)
+	(style
+		(width = "TT_PAGE_ARROW_HIT_W")
+		(height = "TT_PAGE_ARROW_HIT_H")
+		(align = "center|middle")
+
+		(backgroundColor = 0x01000000)
+	)
+
+
+	(block
+		(class $FullsizeAbsolute)
+		(style
+			(alpha = 0)
+			(scale9grid = 4)
+			(backgroundImage = 'url:../service_kit/buttons/button_dock/over.png')
+		)
+		(controller $Animation
+			(bindcall play duration=0.15 to="{ alpha: isHot ? 1 : 0 }" action="kill" (bind trigger "isHot"))
+		)
+	)
+
+	(block
+		(class $FullsizeAbsolute)
+		(style
+			(alpha = 0)
+			(scale9grid = 4)
+			(backgroundImage = 'url:../service_kit/buttons/button_dock/down.png')
+		)
+		(controller $Animation
+			(bindcall play duration=0.15 to="{ alpha: isPressed ? 1 : 0 }" action="kill" (bind trigger "isPressed"))
+		)
+	)
+
+	(block
+		(style
+			(width = "TT_PAGE_ARROW_WIDTH")
+			(height = "TT_PAGE_ARROW_HEIGHT")
+			(backgroundImage = 'url:../service_kit/buttons/expand_up.png')
+			(backgroundSize = "fill")
+			(bind scaleX "_flip ? -1 : 1")
+			(pivotX = 50%)
+			(hitTest = false)
+		)
+		(controller $Animation
+			(bindcall play duration=0.2 to="{ alpha: glyphAlpha }" action="kill" (bind trigger "glyphAlpha"))
+		)
+	)
+
+	(block
+		(class $FullsizeAbsolute)
+		(macro MOUSE_HANDLER
+			_enabled = "_enabled"
+			_methods = "_methods"
+			_soundSet = "'button_context'"
+		)
+	)
+)
+
+
+
+
+(def element TT_ArrowSelectElement (_items:array=[], _index:number=0, _valueKey:str='value',
+		_selectedValue:gfx=null, _writePath:gfx='', _boxWidth:number=220, _dropWidth:number=300) layout=true
+	(scope
+		(var atFirst:bool = "_index <= 0")
+		(var atLast:bool  = "_index >= _items.length - 1")
+		(var prevValue:gfx = "atFirst ? _selectedValue : _items[_index - 1][_valueKey]")
+		(var nextValue:gfx = "atLast ? _selectedValue : _items[_index + 1][_valueKey]")
+		(var prevMethods:array = "[{type: 'direct.action', name: 'mod.setUiState', args: [_writePath, prevValue]}]")
+		(var nextMethods:array = "[{type: 'direct.action', name: 'mod.setUiState', args: [_writePath, nextValue]}]")
+	)
+	(style
+		(width = "TT_CONFIG_WINDOW_WIDTH")
+		(align = "center|middle")
+		(marginBottom = "TT_CONFIG_SECTION_MARGIN")
+	)
+
+	(hblock
+		(style
+			(align = "center|middle")
+		)
+
+		(element TT_ArrowButton
+			_enabled = "!atFirst"
+			_flip = "true"
+			_methods = "prevMethods"
+		)
+
+		(block
+			(style
+				(bind width "_boxWidth")
+				(align = "center|middle")
+				(marginLeft = 16px)
+				(marginRight = 16px)
+			)
+			(element TT_Select
+				_items = "_items"
+				_valueKey = "_valueKey"
+				_listItemRenderer = "'TT_ModSelectItemRenderer'"
+				_choosedItemRenderer = "'TT_ArrowSelectChosenRenderer'"
+				_writeAction = "'mod.setUiState'"
+				_writeArg0 = "_writePath"
+				_selectedMaxWidth = "_boxWidth"
+				_dropDownWidth = "_dropWidth"
+				_maxDropDownHeight = "400"
+				_selectedValue = "_selectedValue"
+				_centerChosen = "true"
+				_showNavigateIcon = "false"
+			)
+		)
+
+		(element TT_ArrowButton
+			_enabled = "!atLast"
+			_methods = "nextMethods"
+		)
+	)
+)
+
+
+(def element TT_NodeElement (_node:gfx, _slug:str, _depth:number=0) layout=true
+	(scope
+		(var kind:str      = "_node && _node.kind ? _node.kind : ''")
+		(var isHidden:bool = "_node && _node.hidden ? true : false")
+		(var isGroup:bool  = "kind == 'group'")
+		(var isSetting:bool = "kind == 'setting'")
+
+		(var isPopup:bool = "isGroup && _node.display == 'popup'")
+
+		(var isEmptyGroup:bool = "isGroup && false == _node.hasVisible")
+
+
+		(var isInstantiated:bool = false)
+		(controller $Animation
+			(bindcall play
+				delay = "isGroup ? $index * 0.1 : $index * 0.03"
+				duration = "0.001"
+				from = "{ isInstantiated: false }"
+				to   = "{ isInstantiated: true }"
+				init = true
+			)
+		)
+	)
+	(style
+		(width = 100%)
+		(align = "middle|center")
+	)
+
+	(controller $Instance renderer='TT_GroupElement'
+		(bind enabled "isInstantiated && isGroup && !isPopup && !isHidden && !isEmptyGroup && _depth < TT_MAX_GROUP_DEPTH")
+		(args _node="_node" _slug="_slug" _depth="_depth")
+	)
+
+
+	(controller $Instance renderer='TT_GroupRowElement'
+		(bind enabled "isInstantiated && isPopup && !isHidden && !isEmptyGroup && _depth < TT_MAX_GROUP_DEPTH")
+		(args _node="_node" _slug="_slug" _depth="_depth")
+	)
+
+	(controller $Instance renderer='TT_SettingRowElement'
+		(bind enabled "isInstantiated && isSetting && !isHidden")
+		(args _node="_node" _slug="_slug" _depth="_depth")
+	)
+)
+
+
+
+(def element TT_GroupElement (_node:gfx, _slug:str, _depth:number=0) layout=true
+	(scope
+		(var label:str     = "_node && _node.label ? _node.label : ''")
+		(var children:array = "_node && _node.children ? _node.children : []")
+		(var isInline:bool = "_node && _node.display == 'transparent' ? true : false")
+		(var hasLabel:bool = "label != '' && !isInline")
+		(var groupKey:str  = "_node && _node.key ? _node.key : ''")
+
+
+		(var uiStateEntity:gfx  = "$datahub.getPrimaryEntity(CC.mods_DataComponent, 'modPrefs.uiState')")
+		(var uiStateComp:gfx    = "uiStateEntity ? uiStateEntity.mods_DataComponent : null")
+		(var collapsedAll:dict  = "uiStateComp ? (uiStateComp.data.collapsed ? uiStateComp.data.collapsed : {}) : {}")
+		(var collapsedSlug:dict = "collapsedAll[_slug] ? collapsedAll[_slug] : {}")
+		(var storedExpanded:gfx = "groupKey != '' ? collapsedSlug[groupKey] : null")
+
+
+		(var isCollapsible:bool = "_node && _node.collapse && !isInline ? true : false")
+		(var collapseState:str  = "isCollapsible ? _node.collapse : 'expanded'")
+
+		(macro MOUSE_HANDLER_SCOPE "'groupExpand_'")
+
+
+
+		(var startsExpanded:bool = "(isCollapsible && null != storedExpanded) ? storedExpanded : (collapseState != 'collapsed')")
+		(var isExpanded:bool = "startsExpanded")
+
+
+		(bind isExpanded "isCollapsible ? !isExpanded : isExpanded" watch=false init=false (event "groupExpand_evClicked"))
+
+		(var hasExpanded:bool = "startsExpanded")
+		(bind hasExpanded "true" watch=false init=false (event "groupExpand_evClicked"))
+
+
+
+		(macro TT_GET_PREF _varName="'grpVis'" _key="groupKey")
+		(var isApplicable:bool = "null == grpVisC ? true : grpVis.visible")
+
+		(var localizedTitleText:str = "tr(label)")
+
+		(var hintKey:str = "_node && _node.hint && _node.hint.text ? _node.hint.text : ''")
+		(var localizedHintText:str = "tr(hintKey)")
+		(var hintImage:str = "_node && _node.hint && _node.hint.image ? _node.hint.image : ''")
+		(var hasHint:bool = "hintKey != '' || hintImage != ''")
+	)
+
+
+	(bindcall externalCall 'direct.action' "['mod.setUiState', [['collapsed', _slug, groupKey], isExpanded]]" init=false watch=false (bind trigger "isExpanded"))
+
+	(style
+		(align = "middle|center")
+		(bind width "isInline ? 100% : (_depth == 0 ? 90% : 100%)")
+
+		(bind paddingLeft "(isInline || _depth == 0) ? 0 : TT_CONFIG_GROUP_INDENT")
+		(bind marginTop "_depth == 0 ? TT_CONFIG_SECTION_MARGIN : (isInline ? 0 : 8px)")
+		(bind marginBottom "isInline ? 0 : TT_CONFIG_SECTION_MARGIN")
+		(backgroundColor = 0x01000000)
+		(bind alpha "isApplicable ? 1.0 : 0.3")
+		(bind hitTest "isApplicable")
+	)
+
+	(hblock
+		(bind visible "hasLabel")
+		(style
+			(width = 100%)
+			(align = "middle|center")
+			(backgroundColor = 0x01000000)
+		)
+		(block
+			(bind visible "isCollapsible")
+			(style
+				(position = "absolute")
+				(left = -15px)
+				(vcenter = 0%)
+				(alpha = "0.7")
+			)
+			(element ButtonExpand
+				_isInOverState="groupExpand_rollOver && !groupExpand_mouseDown"
+				_isInDownState="groupExpand_rollOver && groupExpand_mouseDown"
+				_expanded="isExpanded"
+			)
+		)
+		(tf
+			(class $TextDefaultBold)
+			(bind text "localizedTitleText")
+			(style
+				(fontSize = 21)
+				(width = 100%)
+				(marginLeft = 3px)
+				(textColor = 0xFFFFFFFF)
+			)
+		)
+		(block
+			(bind visible "hasHint")
+			(style
+				(width = 19px) (height = 19px) (backgroundSize = "fill")
+				(marginLeft = 5px) (marginRight = 5px)
+				(bind backgroundImage "'url:../service_kit/unified_status_icons/icon_info.png'")
+			)
+		)
+
+		(controller $Tooltip (renderer = 'TT_TooltipHintElement')
+			(bind enabled "hasHint")
+			(args
+				_text = "localizedHintText"
+				_unifiedStatus = "SC.Ui_styles.UNIFIED_STATUS.INFO"
+				_image = "hintImage"
+			)
+			(macro TT_TOOLTIP_BEHAVIOUR)
+		)
+
+		(macro MOUSE_HANDLER
+			_prefix = "'groupExpand_'"
+			_enabled = "isCollapsible"
+			_soundSet = "'dropdown'"
+		)
+	)
+
+	(controller $Instance renderer='TT_HorizontalDivider'
+		(bind enabled "hasLabel")
+		(args _margin="5px" _alpha="2")
+	)
+
+	(block
+		(bind visible "isExpanded")
+		(style
+			(width = 100%)
+			(align = "middle|center")
+		)
+
+		(controller $Repeat renderer='TT_NodeElement'
+			(bind count "hasExpanded ? children.length : 0")
+			(args
+				_node  = "children[$index]"
+				_slug  = "_slug"
+				_depth = "isInline ? _depth : _depth + 1"
+			)
+		)
+	)
+)
+
+
+
+(def element TT_SettingRowElement (_node:gfx, _slug:str, _depth:number=0) layout=true
+	(scope
+		(var control:str = "_node && _node.control ? _node.control : ''")
+		(var key:str     = "_node && _node.key ? _node.key : ''")
+
+		(var isMinimap:bool = "_node && (_node.backend == 'minimapOption' || (null != _node.owned && _node.owned == false))")
+		(var rendererTable:dict = "isMinimap ? TT_MINIMAP_RENDERERS : TT_CONFIG_RENDERERS")
+		(var renderer:str = "control in rendererTable ? rendererTable[control] : ''")
+
+		(macro TT_GET_PREF _varName="'prefData'" _key="key")
+		(var isInteractive:bool = "(isMinimap || control == 'button' || control == 'position') ? true : (null != prefData && null != prefData.visible ? prefData.visible : true)")
+
+		(macro MOUSE_HANDLER_SCOPE)
+
+		(var hintKey:str = "_node && _node.hint && _node.hint.text ? _node.hint.text : ''")
+		(var localizedHintText:str = "tr(hintKey)")
+		(var hintImage:str = "_node && _node.hint && _node.hint.image ? _node.hint.image : ''")
+
+
+		(var isConfigInitialized:bool = false)
+		(var targetAlpha:number = "isInteractive ? 1.0 : 0.3")
+
+		(controller $Animation
+			(bindcall play
+				duration = "0.001"
+				from = "{ isConfigInitialized: false }"
+				to   = "{ isConfigInitialized: true }"
+				init = true
+			)
+		)
+	)
+
+	(macro MOUSE_EVENTS_DISPATCHER)
+
+
+	(style
+		(bind width "_depth == 0 ? 90% : 100%")
+		(bind hitTest "isInteractive")
+	)
+
+	(block
+		(style
+			(alpha = 0)
+			(width = 100%)
+		)
+		(controller $Animation
+			(bindcall play
+				duration = "0.2"
+				to = "{ alpha: targetAlpha }"
+				watch=true
+				action="killAll"
+				(bind trigger "isConfigInitialized")
+			)
+		)
+
+		(block
+			(class $FullsizeAbsolute)
+			(style
+				(backgroundColor = 0x1FFFFFFF)
+				(alpha = 0)
+			)
+			(controller $Animation
+				(bindcall play duration = 0.1 to = { alpha: 1 } action="killAll" (event "evRollOver"))
+				(bindcall play duration = 0.1 to = { alpha: 0 } action="killAll" (event "evRollOut"))
+			)
+		)
+
+
+		(hblock
+			(style
+				(align = "middle|center")
+				(width = 100%)
+				(marginBottom = 4px)
+				(marginTop = 4px)
+				(backgroundColor = 0x01000000)
+			)
+
+
+			(block (style (width = 0px) (height = 23px)))
+
+			(element TT_ConfigTitleElement _node="_node")
+
+			(block
+				(style
+					(position = "absolute")
+					(right = 0px)
+					(vcenter = 0%)
+					(width = "TT_CONFIG_OPTION_WIDTH")
+				)
+				(controller $Instance
+					(bind renderer "renderer")
+					(bind enabled "isConfigInitialized && renderer != ''")
+					(args
+						_node="_node"
+					)
+				)
+			)
+		)
+
+
+		(controller $Tooltip (renderer = 'TT_TooltipHintElement')
+			(bind enabled "hintKey != '' || hintImage != ''")
+			(args
+				_text = "localizedHintText"
+				_unifiedStatus = "SC.Ui_styles.UNIFIED_STATUS.INFO"
+				_image="hintImage"
+			)
+			(macro TT_TOOLTIP_BEHAVIOUR)
+		)
+	)
+)
+
+(def element TT_ConfigTitleElement (_node:gfx) layout=true
+	(scope
+		(var titleKey:str = "_node && _node.label ? _node.label : ''")
+		(var localizedTitleText:str = "tr(titleKey)")
+		(var hasTooltip:bool = "_node && _node.hint ? true : false")
+	)
+
+	(style
+		(width = 100%)
+		(paddingRight = "TT_CONFIG_OPTION_WIDTH + TT_CONFIG_LABEL_CONTROL_GAP")
+	)
+	(hblock
+		(style
+			(width = 100%)
+			(align = "middle|center")
+		)
+		(tf
+			(bind text "localizedTitleText")
+			(class $TextDefault)
+			(style
+				(width = 100%)
+				(leading = -5)
+				(marginLeft = 8px)
+				(textColor = 0xFFFFFFFF)
+			)
+		)
+		(block
+			(bind visible "hasTooltip")
+			(style
+				(width = 19px) (height = 19px) (backgroundSize = "fill")
+				(marginLeft = 5px) (marginRight = 5px)
+				(bind backgroundImage "'url:../service_kit/unified_status_icons/icon_info.png'")
+			)
+		)
+	)
+)
+
+
+
+
+(def element TT_GroupRowElement (_node:gfx, _slug:str, _depth:number=0) layout=true
+	(scope
+
+
+		(macro MOUSE_HANDLER_SCOPE)
+
+		(var groupKey:str = "_node && _node.key ? _node.key : ''")
+
+
+		(macro TT_GET_PREF _varName="'grpVis'" _key="groupKey")
+		(var isInteractive:bool = "null == grpVisC ? true : grpVis.visible")
+
+		(var hintKey:str = "_node && _node.hint && _node.hint.text ? _node.hint.text : ''")
+		(var localizedHintText:str = "tr(hintKey)")
+		(var hintImage:str = "_node && _node.hint && _node.hint.image ? _node.hint.image : ''")
+
+
+
+		(macro TT_POPUP_COUNT_SCOPE _tag="'grouprow'")
+		(var isPopupOpen:bool = "ttOpenHere > 0")
+
+		(var isConfigInitialized:bool = false)
+		(var targetAlpha:number = "isInteractive ? 1.0 : 0.3")
+		(controller $Animation
+			(bindcall play
+				duration = "0.001"
+				from = "{ isConfigInitialized: false }"
+				to   = "{ isConfigInitialized: true }"
+				init = true
+			)
+		)
+	)
+
+	(macro MOUSE_EVENTS_DISPATCHER)
+
+	(style
+		(bind width "_depth == 0 ? 90% : 100%")
+		(bind hitTest "isInteractive")
+	)
+
+	(block
+		(style
+			(alpha = 0)
+			(width = 100%)
+		)
+		(controller $Animation
+			(bindcall play
+				duration = "0.2"
+				to = "{ alpha: targetAlpha }"
+				watch=true
+				action="killAll"
+				(bind trigger "isConfigInitialized")
+			)
+		)
+
+		(block
+			(class $FullsizeAbsolute)
+			(style
+				(backgroundColor = 0x1FFFFFFF)
+				(alpha = 0)
+			)
+			(controller $Animation
+				(bindcall play duration = 0.1 to = { alpha: 1 } action="killAll" (event "evRollOver"))
+				(bindcall play duration = 0.1 to = { alpha: 0 } action="killAll" (event "evRollOut"))
+			)
+		)
+
+		(hblock
+			(style
+				(align = "middle|center")
+				(width = 100%)
+				(marginBottom = 4px)
+				(marginTop = 4px)
+				(backgroundColor = 0x01000000)
+			)
+
+			(block (style (width = 0px) (height = 23px)))
+
+			(element TT_ConfigTitleElement _node="_node")
+
+			(block
+				(style
+					(position = "absolute")
+					(right = 0px)
+					(vcenter = 0%)
+					(width = "TT_CONFIG_OPTION_WIDTH")
+				)
+				(controller $Instance renderer='TT_GroupTriggerElement'
+					(bind enabled "isConfigInitialized")
+					(args _node="_node" _slug="_slug")
+				)
+			)
+		)
+
+
+		(controller $Tooltip (renderer = 'TT_TooltipHintElement')
+			(bind enabled "!isPopupOpen && (hintKey != '' || hintImage != '')")
+			(args
+				_text = "localizedHintText"
+				_unifiedStatus = "SC.Ui_styles.UNIFIED_STATUS.INFO"
+				_image = "hintImage"
+			)
+			(macro TT_TOOLTIP_BEHAVIOUR)
+			(bindcall hide (event "evTTUpPopupShown"))
+		)
+	)
+)
+
+
+
+(def element TT_GroupPopupElement (_node:gfx, _slug:str) layout=true
+	(scope
+		(macro MOUSE_HANDLER_SCOPE)
+		(macro STAGE_SIZE)
+		(var clampedMaxHeight:number = "min(stageHeight - 300, stageHeight * 0.7)")
+
+		(var children:array = "_node && _node.children ? _node.children : []")
+		(var titleKey:str = "_node && _node.label ? _node.label : ''")
+		(var localizedTitleText:str = "tr(titleKey)")
+		(var hasLabel:bool = "titleKey != ''")
+	)
+
+
+	(style
+		(align = "middle|center")
+		(width = "TT_CONFIG_WINDOW_WIDTH + 4")
+	)
+
+	(element TT_BackgroundElement)
+
+
+	(block
+		(class $FullsizeAbsolute)
+		(style (backgroundColor = 0x00FFFFFF))
+	)
+
+
+	(bindcall externalCall 'inputMapping.onAction' "['battleChat.rollOverChanged', { rollOver: rollOver }]" init=false watch=false (bind trigger "rollOver"))
+	(macro MOUSE_EVENTS_DISPATCHER)
+
+	(hblock
+		(bind visible "hasLabel")
+		(style
+			(width = 90%)
+			(align = "middle|center")
+			(marginTop = 12px)
+		)
+		(tf
+			(class $TextDefaultBold)
+			(bind text "localizedTitleText")
+			(style
+				(fontSize = 21)
+				(width = 100%)
+				(textColor = 0xFFFFFFFF)
+			)
+		)
+	)
+	(controller $Instance renderer='TT_HorizontalDivider'
+		(bind enabled "hasLabel")
+		(args _margin="5px" _alpha="2")
+	)
+
+	(scrollArea
+		(style
+			(backgroundColor = 0x01000000)
+			(width = "TT_CONFIG_WINDOW_WIDTH")
+			(marginBottom = 12px)
+			(bind maxHeight "clampedMaxHeight")
+		)
+
+		(verticalSlider='ScrollBarVLight')
+		(topShadow='ScrollAreaShadowTop')
+		(bottomShadow='ScrollAreaShadowBottom')
+
+		(activeControlsAlpha=0.7)
+		(inactiveControlsAlpha=0.2)
+
+		(wheelScrollSpeed = "1.5")
+		(wheelScrollAcceleration = "0.9")
+		(maxScrollingAnimatedDistance = "150")
+
+		(animationDuration=0.2)
+		(animationEasing="Easing.cubic_out")
+
+		(hscrollPolicy='off')
+		(vscrollPolicy='auto')
+		(repeatController='TT_GroupPopupRepeat')
+
+		(content
+			(style
+				(width = "TT_CONFIG_WINDOW_WIDTH")
+				(align = "middle|center")
+			)
+			(controller $Repeat renderer='TT_NodeElement' name='TT_GroupPopupRepeat'
+				(bind count "children.length")
+				(args
+					_node  = "children[$index]"
+					_slug  = "_slug"
+					_depth = "0"
+				)
+			)
+		)
+	)
+)
+(def element TT_DragTitleElement () layout=true
+	(scope
+		(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
+		(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
+	)
+	(tf
+		(class $TextDefaultBold)
+		(bind text "'T'")
+		(style
+			(bind alpha "isMouseActive ? 0.6 : 0.0")
+			(hitTest = false)
+			(fontSize = 18)
+		)
+	)
+)
+
+
+
+(def element TT_WindowCloseButton (_tooltipText:str='IDS_CLOSE', _dispatchedEv:str='', _dispatchParams:gfx={}) layout=true
+	(scope
+		(macro SIMPLE_MOUSE_OVER_DOWN_SELECTED_COLORTRANSFORM_SCOPE)
+		(macro MOUSE_HANDLER_SCOPE)
+
+		(event evTTDownCloseAll)
+	)
+
+	(style
+		(width = 12px)
+		(height = 12px)
+		(padding = -1px)
+		(backgroundImage = 'url:../service_kit/buttons/button_close.png')
+	)
+
+	(macro SIMPLE_MOUSE_OVER_DOWN_SELECTED_COLORTRANSFORM "true")
+
+	(controller $Tooltip
+		(renderer='SimpleStatusTooltip')
+		(bind enabled "_tooltipText")
+		(args
+			_text = "_tooltipText"
+		)
+
+		(macro TT_STATUS_TOOLTIP_BEHAVIOUR "0")
+		(bindcall hide (event "evTTDownCloseAll"))
+	)
+
+	(macro MOUSE_HANDLER
+		_dispatchedEv = "_dispatchedEv"
+		_dispatchParams = "_dispatchParams"
+		_soundSet = "'button_default'"
+	)
+)
+
+(def element TT_TooltipConfigElement(_modSlug:str)
+
+	(scope
+		(macro TT_GET_REGISTRY)
+	)
+
+
+	(style
+		(align = "middle|center")
+		(width = "TT_CONFIG_WINDOW_WIDTH + 4")
+	)
+
+	(element TT_BackgroundElement)
+
+
+	(block
+		(style
+			(position = "absolute")
+			(right = 4px)
+			(top = 4px)
+			(width = 30px)
+			(height = 30px)
+			(align = "middle|center")
+		)
+		(element TT_WindowCloseButton _dispatchedEv = "'evTTUpHideInfotip'")
+	)
+
+
+	(controller $Repeat renderer='TT_ModConfigSlot'
+		(bind count "mods.length")
+		(args
+			_modData = "mods[$index]"
+			_active  = "mods[$index].slug == _modSlug"
+		)
+	)
+)
+
+(def element TT_ConfigButtonElement (_modSlug:str, _tooltipPosition:number="border", _tooltipAlign:number="innerTop|outerLeft") layout=true
+
+	(scope
+		(macro TT_OPENER_SCOPE)
+	)
+	(dispatch evTTSelfHideInfotip args="{}" (bind trigger "isMouseActive"))
+
+
+	(bindcall externalCall 'direct.action' "['mod.setCursorHold', [false]]" init=false watch=false on='removedFromStage')
+
+	(style
+		(position = "absolute")
+		(width = 30px)
+		(height = 30px)
+		(align = "middle|center")
+	)
+
+	(controller $Tooltip
+		(renderer='TT_TooltipConfigElement')
+		(args _modSlug = "_modSlug")
+		(macro TT_CONFIG_BEHAVIOUR _position="_tooltipPosition" _align="_tooltipAlign")
+
+		(bindcall externalCall 'direct.action' "['mod.setCursorHold', [true]]" init=false watch=false on=evStartShow)
+		(bindcall externalCall 'direct.action' "['mod.setCursorHold', [false]]" init=false watch=false on=evHide)
+	)
+
+	(element ButtonSettingsSmall
+		(bind visible "isMouseActive")
+		(alpha = 0.7)
+	)
+)
+
+
+
+(def element TT_ConfigSubsetElement (_modSlug:str, _keys:array, _isEnabled:bool=true)
+	(scope
+		(macro TT_GET_REGISTRY)
+	)
+
+	(style
+		(bind hitTest "_isEnabled")
+	)
+
+	(macro TOOLTIP_SYSTEM_DEFAULT_BACKGROUND)
+
+	(element TOOLTIP_SYSTEM_DEFAULT_CONTAINER
+		(style
+			(width = "TT_CONFIG_WINDOW_WIDTH")
+			(align = "middle|center")
+		)
+
+		(controller $Repeat renderer='TT_ConfigSubsetSlot'
+			(bind count "mods.length")
+			(args
+				_modData = "mods[$index]"
+				_keys    = "_keys"
+				_active  = "mods[$index].slug == _modSlug"
+			)
+		)
+	)
+)
+
+
+(def element TT_ConfigSubsetSlot (_modData:gfx, _keys:array, _active:bool=false) layout=true
+	(scope
+		(var tree:array = "_modData && _modData.tree ? _modData.tree : []")
+		(var slug:str   = "_modData && _modData.slug ? _modData.slug : ''")
+	)
+	(style
+		(width = 100%)
+		(align = "middle|center")
+	)
+	(controller $Repeat renderer='TT_SubsetNodeElement'
+		(bind count "_active ? tree.length : 0")
+		(args
+			_node = "tree[$index]"
+			_slug = "slug"
+			_keys = "_keys"
+		)
+	)
+)
+
+
+
+(def element TT_SubsetNodeElement (_node:gfx, _slug:str, _keys:array, _depth:number=0) layout=true
+	(scope
+		(var kind:str       = "_node && _node.kind ? _node.kind : ''")
+		(var isHidden:bool  = "_node && _node.hidden ? true : false")
+		(var children:array = "kind == 'group' && _node.children ? _node.children : []")
+		(var key:str        = "kind == 'setting' && _node.key ? _node.key : ''")
+
+		(var isWanted:bool  = "key != '' && key in _keys")
+	)
+	(style
+		(width = 100%)
+		(align = "middle|center")
+	)
+
+	(controller $Instance renderer='TT_SettingRowElement'
+		(bind enabled "isWanted && !isHidden")
+		(args _node="_node" _slug="_slug" _depth="0")
+	)
+
+	(controller $Repeat renderer='TT_SubsetNodeElement'
+		(bind count "!isHidden && _depth < TT_MAX_GROUP_DEPTH ? children.length : 0")
+		(args
+			_node  = "children[$index]"
+			_slug  = "_slug"
+			_keys  = "_keys"
+			_depth = "_depth + 1"
+		)
+	)
+)
+
+
+
+
+
+
+
+
+(def macro TT_GET_PREF (_varName:expression, _key:expression)
+	(var name="_varName + 'E'" type=gfx value="$datahub.getPrimaryEntity(CC.mods_DataComponent, 'modPrefs.' + _key)")
+	(var name="_varName + 'C'" type=gfx value="$scope[_varName + 'E'] ? $scope[_varName + 'E'].mods_DataComponent : null")
+	(var name="_varName" type=gfx value="$scope[_varName + 'C'] ? $scope[_varName + 'C'].data : null" (event "$scope[_varName + 'C'].evDataChanged"))
+)
+
+
+(def macro TT_GET_NULLABLE_PREF (_varName:expression, _key:expression)
+	(var name="_varName + 'W'" type=gfx value="$datahub.getPrimWatcher(CC.mods_DataComponent, 'modPrefs.' + _key)")
+	(var name="_varName + 'E'" type=gfx value="$scope[_varName + 'W'].entity" (event "$scope[_varName + 'W'].event"))
+	(var name="_varName + 'C'" type=gfx value="$scope[_varName + 'E'] ? $scope[_varName + 'E'].mods_DataComponent : null")
+	(var name="_varName" type=gfx value="$scope[_varName + 'C'] ? $scope[_varName + 'C'].data : null" (event "$scope[_varName + 'C'].evDataChanged"))
+)
+
+
+
+(def macro TT_IS_MOD_INSTALLED (_varName:expression, _slug:expression)
+	(var name="_varName + 'E'" type=gfx value="$datahub.getPrimaryEntity(CC.mods_DataComponent, 'modPrefs.installedMods')")
+	(var name="_varName + 'C'" type=gfx value="$scope[_varName + 'E'] ? $scope[_varName + 'E'].mods_DataComponent : null")
+
+	(var name="_varName + 'L'" type=array value="$scope[_varName + 'C'] ? ($scope[_varName + 'C'].data.mods ? $scope[_varName + 'C'].data.mods : []) : []" (event "$scope[_varName + 'C'].evDataChanged"))
+	(var name="_varName" type=bool value="_slug in $scope[_varName + 'L']")
+)
+
+
+(def macro TT_GET_REGISTRY ()
+	(var regEntity:gfx  = "$datahub.getPrimaryEntity(CC.mods_DataComponent, 'modPrefs.registry')")
+	(var regComp:gfx    = "regEntity ? regEntity.mods_DataComponent : null")
+	(var mods:array     = "regComp ? (regComp.data.mods ? regComp.data.mods : []) : []" (event "regComp.evDataChanged"))
+)
+
+
+(def macro TT_GET_FRAMEWORK ()
+	(var fwEntity:gfx  = "$datahub.getPrimaryEntity(CC.mods_DataComponent, 'modPrefs.framework')")
+	(var fwComp:gfx    = "fwEntity ? fwEntity.mods_DataComponent : null")
+)
+
+
+(def macro TT_OPENER_SCOPE ()
+
+	(event evHideInfotip)
+	(event evTTSelfHideInfotip)
+	(event evTTUpHideInfotip)
+	(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
+	(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
+
+
+	(event evTTDownCommitPending)
+	(event evTTDownCloseAll)
+
+	(macro TT_POPUP_DEPTH_SCOPE _tag="'window'")
+)
+
+
+
+
+
+(def macro TT_POPUP_COUNT_SCOPE (_tag:expression="''")
+	(event evTTUpPopupShown)
+	(event evTTUpPopupHidden)
+
+
+	(var ttOpenHere:number = 0)
+	(bind ttOpenHere "max(0, ttOpenHere + 1)" watch=false init=false (event "evTTUpPopupShown"))
+	(bind ttOpenHere "max(0, ttOpenHere - 1)" watch=false init=false (event "evTTUpPopupHidden"))
+
+
+)
+
+
+(def macro TT_POPUP_DEPTH_SCOPE (_tag:expression="''")
+	(macro TT_POPUP_COUNT_SCOPE _tag="_tag")
+
+	(event evTTSelfPopupShown)
+	(event evTTSelfPopupHidden)
+	(event evTTSelfHidePopup)
+
+
+
+
+	(var ttCanClose:bool = "ttOpenHere <= 1")
+)
+
+
+
+(def macro TT_POPUP_BEHAVIOUR (_priority:expression="1", _align:expression="bottom|center",
+								_position:expression="border", _offset:expression="{ x: 0, y: 4 }")
+	(macro DEFAULT_INFOTIP_ANIMATIONS)
+	(bindcall show on='click')
+
+
+	(dispatch evTTSelfHidePopup args="{}" on='evClickOutside' (bind enabled "ttCanClose"))
+	(bindcall hide (event "evTTSelfHidePopup"))
+
+
+	(bindcall hide (event "evTTDownCloseAll"))
+
+	(dispatch evTTUpPopupShown dir="EventDirection.UP" args="{}" on=evShow)
+
+
+	(dispatch evTTUpPopupHidden dir="EventDirection.UP" args="{}" on=evHide)
+
+
+	(bind ttOpenHere "0" watch=false init=false on='evHide')
+
+
+	(dispatch evTTSelfPopupShown  args="{}" on=evShow)
+	(dispatch evTTSelfPopupHidden args="{}" on=evHide)
+
+	(priority = "_priority")
+	(offset = "_offset")
+	(align = "_align")
+	(position = "_position")
+	(screenBoundsOffset = "{ left: M, top: M, right: M, bottom: M }")
+	(pinTop='InfotipPinTop')
+	(pinBottom='InfotipPinBottom')
+	(cache = false)
+)
+
+
+(def macro TT_STATUS_TOOLTIP_BEHAVIOUR (_priority:expression = "0")
+	(macro DEFAULT_TOOLTIP_BEHAVIOUR "_priority")
+	(bindcall hide on='removedFromStage')
+)
+
+(def macro TT_TOOLTIP_BEHAVIOUR (_priority:expression = "0")
+
+	(showAnimation = {
+		duration: 0.05,
+		delay	: 0.0,
+		from	: {alpha: 0, top: 5},
+		to		: {alpha: 1, top: 0}
+	})
+	(hideAnimation = {
+		duration: 0.05,
+		delay	: 0.0,
+		from	: {alpha:1},
+		to		: {alpha:0, top: -5}
+	})
+
+	(bindcall show on='rollOver')
+
+	(bindcall hide on='rollOut')
+	(bindcall hide on='removedFromStage')
+
+	(offset = {	x: 0, y: 15})
+
+	(screenBoundsOffset = {			left:	10,
+									top:	10,
+									right:	10,
+									bottom:	10 })
+	
+	(priority = "_priority")
+
+	(align="bottom|right")
+	(position="trackMouse")
+)
+
+(def macro TT_CONFIG_BEHAVIOUR (_priority:expression = "1", _position:expression="border", _align:expression="innerTop|outerLeft")
+	(bindcall show
+		animation = {
+			duration: 0.15,
+			easing	: "Easing.quint_in",
+			from	: { alpha: 0, top: 10 },
+			to		: { alpha: 1, top: 0 }
+		}
+		on='click'
+	)
+
+	(bindcall hide
+		animation =	{
+			duration: 0.1,
+			easing	: "Easing.quint_out",
+			from	: { alpha: 1, top: 0 },
+			to		: { alpha: 0, top: 10 }
+		}
+		(event "evHideInfotip") (event "evTTSelfHideInfotip") (event "evTTUpHideInfotip")
+	)
+
+	(dispatch evTTSelfHideInfotip args="{}" on='evClickOutside' (bind enabled "ttCanClose"))
+
+	(dispatch evTTUpPopupShown dir="EventDirection.UP" args="{}" on=evShow)
+	(dispatch evTTUpPopupHidden dir="EventDirection.UP" args="{}" on=evHide)
+	(bind ttOpenHere "0" watch=false init=false on='evHide')
+
+	(dispatch evTTSelfPopupShown  args="{}" on=evShow)
+	(dispatch evTTSelfPopupHidden args="{}" on=evHide)
+
+
+
+	(dispatch evTTDownCommitPending dir="EventDirection.DOWN" args="{}" on=evStartHide)
+	(dispatch evTTDownCloseAll      dir="EventDirection.DOWN" args="{}" on=evStartHide)
+
+	(screenBoundsOffset = {
+		left	: "TT_ELEMENT_SIZE.WIDTH",
+		top		: "TT_ELEMENT_SIZE.HEIGHT",
+		right	: "TT_ELEMENT_SIZE.WIDTH",
+		bottom	: "TT_ELEMENT_SIZE.HEIGHT"
+	})
+	(position = "_position")
+	(align = "_align")
+	(priority = "_priority")
+)

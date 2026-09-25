@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "root": "TT_CONST",
+  "constants": {
+    "DISPLAY_MODE": {
+      "DISABLED": 0,
+      "ENABLED": 1,
+      "ADAPTIVE": 2
+    },
+    "MODCONFIG": {
+      "SAVE_MODE": {
+        "AUTO": "auto",
+        "DEV": "dev"
+      }
+    },
+    "MINIMAP": {
+      "OUTLINE_STYLE": {
+        "DISABLED": 0,
+        "DOTTED": 1,
+        "DASHED": 2,
+        "SOLID": 3
+      },
+      "OVERRIDE_DISPLAY_MODE": {
+        "ALWAYS_OFF": 0,
+        "ALWAYS_ON": 1,
+        "INDIVIDUAL": 2
+      }
+    },
+    "TEAM_HP": {
+      "HP_BAR_ORDER": {
+        "HP_AND_BAR": 0,
+        "BAR_AND_HP": 1
+      },
+      "BAR_DIRECTION": {
+        "LEFT": 0,
+        "RIGHT": 1
+      },
+      "HEALTH_SCALE": {
+        "RELATIVE": 0,
+        "ABSOLUTE": 1
+      }
+    },
+    "ADV_SHIP_STATUS": {
+      "HP_BAR_SHAPE": {
+        "SHIP_CONTOUR": 0,
+        "SIMPLE_BAR": 1
+      }
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 5,
+  "id": "cmqmiqhcf0000v0rc3hdwihm7",
+  "author": "ttaro",
+  "modName": "TTaro Mod Config",
+  "slug": "ttaro-mod-config",
+  "order": 24,
+  "framework": true,
+  "tree": [
+    {
+      "kind": "setting",
+      "control": "dropdown",
+      "key": "ttModConfig.saveMode",
+      "label": "IDS_TT_FW_SAVE_MODE",
+      "default": "auto",
+      "options": [
+        {
+          "value": "auto",
+          "phrase": "IDS_TT_FW_SAVE_MODE_AUTO"
+        },
+        {
+          "value": "dev",
+          "phrase": "IDS_TT_FW_SAVE_MODE_DEV"
+        }
+      ]
+    },
+    {
+      "kind": "setting",
+      "control": "toggle",
+      "key": "ttModConfig.hotReloadEnabled",
+      "label": "IDS_TT_FW_HOT_RELOAD",
+      "default": false
+    },
+    {
+      "kind": "setting",
+      "control": "position",
+      "key": "ttModConfig.position",
+      "label": "IDS_TT_DRAGDROP_RESET",
+      "hint": {
+        "text": "IDS_TT_HINT_DRAGDROP_RESET"
+      },
+      "defaultPosition": {
+        "x": {
+          "anchor": "left",
+          "offset": 200
+        },
+        "y": {
+          "anchor": "top",
+          "offset": 0
+        }
+      }
+    }
+  ]
+}

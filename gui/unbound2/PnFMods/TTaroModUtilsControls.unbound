@@ -1,0 +1,1533 @@
+
+
+
+
+(def element TT_SwitchOptionElement (_node:gfx) layout=true
+	(scope
+		(var key:str = "_node && _node.key ? _node.key : ''")
+		(var defaultValue:bool = "_node.default ? _node.default : false")
+		(macro TT_GET_PREF _varName="'prefData'" _key="key")
+		(var prefValue:bool = "null != prefData && null != prefData.value ? prefData.value : defaultValue")
+		(var isModified:bool = "prefValue != defaultValue")
+		(var saveMethods:array  = "[{type: 'direct.action', name: 'mod.setPref',   args: [key, !prefValue]}]")
+		(var resetMethods:array = "[{type: 'direct.action', name: 'mod.resetPref', args: [key]}]")
+	)
+
+	(style (width = "100%"))
+
+	(hblock
+		(style
+			(width = "TT_CONFIG_OPTION_WIDTH")
+			(height = "23px")
+			(align = "left|middle")
+		)
+		(hblock
+			(style
+				(width = "TT_CONFIG_OPTION_CONTROL_WIDTH")
+				(align = "middle|center")
+				(marginRight = "TT_CONFIG_OPTION_VALUE_WIDTH + TT_CONFIG_OPTION_VALUE_MARGIN")
+			)
+			(element SwitchWithoutLabel
+				_state = "prefValue"
+				_methods = "saveMethods"
+			)
+		)
+		(controller $Instance renderer='ImageButton'
+			(bind enabled "isModified")
+			(args
+				_width = "TT_CONFIG_RESET_BUTTON_SIZE"
+				_height = "TT_CONFIG_RESET_BUTTON_SIZE"
+				_backgroundImage = 'url:../service_kit/buttons/context/update.png'
+				_tooltipText = "'IDS_PREFERENCES_CONTEXT_PREF_RESET'"
+				_methods = "resetMethods"
+			)
+		)
+	)
+)
+
+(def element TT_SliderOptionElement (_node:gfx) layout=true
+	(scope
+		(event evTTUpSliderValueChanged)
+		(event evTTUpValueReset)
+		(event evShow)
+		(event evTTUpInputCommit)
+		(var key:str = "_node && _node.key ? _node.key : ''")
+		(var minValue:number = "_node.min ? _node.min : 0")
+		(var maxValue:number = "null != _node.max ? _node.max : 10")
+		(var minLabel:str = "_node.minLabel ? _node.minLabel : ''")
+		(var maxLabel:str = "_node.maxLabel ? _node.maxLabel : ''")
+		(var step:number = "null != _node.step ? _node.step : 1")
+		(var steps:number = "round((maxValue - minValue) / step)")
+		(var default:number = "_node.default ? _node.default : 0")
+		(var defaultSliderValue:number = "round((default - minValue) / step)")
+		(var rounding:number = "null != _node.decimals ? _node.decimals : 2")
+		(macro TT_GET_PREF _varName="'prefData'" _key="key")
+
+		(var prefValue:number = "null != prefData && null != prefData.value ? prefData.value : default")
+		(var sliderValue:number = "round((prefValue - minValue) / step)" watch=false (event "evShow"))
+		(bind sliderValue "$event.value" watch=false init=false (event "evTTUpValueReset")(event "evTTUpSliderValueChanged"))
+
+		(bind sliderValue "round(($event.value - minValue) / step)" watch=false init=false (event "evTTUpInputCommit"))
+		(var isMinLabelAvailable:bool = "sliderValue == 0 && minLabel")
+		(var isMaxLabelAvailable:bool = "sliderValue == steps && maxLabel")
+		(var isModified:bool = "sliderValue != defaultSliderValue")
+
+
+		(var realValue:number = "minValue + sliderValue * step")
+		(var maxChars:number = "(maxValue >= 10000 ? 5 : maxValue >= 1000 ? 4 : maxValue >= 100 ? 3 : maxValue >= 10 ? 2 : 1)
+								+ (rounding > 0 ? rounding + 1 : 0)
+								+ (minValue < 0 ? 1 : 0)")
+	)
+	(dispatch evShow args="{}" on='addedToStage')
+
+
+	(bindcall externalCall 'direct.action' "['mod.setPref', [key, minValue + $event.value * step]]" init=false watch=false (event "evTTUpSliderValueChanged")(event "evTTUpValueReset"))
+
+	(bindcall externalCall 'direct.action' "['mod.setPref', [key, $event.value]]" init=false watch=false (event "evTTUpInputCommit"))
+
+	(style (width = "100%"))
+
+	(hblock
+		(style
+			(width = "TT_CONFIG_OPTION_WIDTH")
+			(height = "23px")
+			(align = "left|middle")
+		)
+		(hblock
+			(style
+				(align = "middle|center")
+			)
+			(element DefaultSlider
+				_value = "sliderValue"
+				_intervalsCount = "steps"
+				_unitsInStepInterval = "step"
+				_width = "TT_CONFIG_OPTION_CONTROL_WIDTH"
+			)
+			(block
+				(style
+					(marginRight = "TT_CONFIG_OPTION_VALUE_MARGIN")
+					(width = "TT_CONFIG_OPTION_VALUE_WIDTH")
+					(align = "middle|center")
+				)
+				(element TT_TextInputElement
+					_value = "realValue"
+					_min = "minValue"
+					_max = "maxValue"
+					_step = "step"
+					_decimals = "rounding"
+					_maxChars = "maxChars"
+					_height = "20"
+					_fillWidth = "true"
+
+					_minLabel = "minLabel"
+					_maxLabel = "maxLabel"
+					_atMin = "isMinLabelAvailable"
+					_atMax = "isMaxLabelAvailable"
+				)
+			)
+		)
+		(block
+			(bind visible "isModified")
+			(controller $Instance renderer='ImageButton'
+				(args
+					_width = "TT_CONFIG_RESET_BUTTON_SIZE"
+					_height = "TT_CONFIG_RESET_BUTTON_SIZE"
+					_backgroundImage = 'url:../service_kit/buttons/context/update.png'
+					_tooltipText = "'IDS_PREFERENCES_CONTEXT_PREF_RESET'"
+					_dispatchedEv = "'evTTUpValueReset'"
+					_dispatchParams = "{'value': defaultSliderValue}"
+				)
+			)
+		)
+	)
+)
+
+(def element TT_NumericInputOptionElement (_node:gfx) layout=true
+	(scope
+		(event evTTUpInputCommit)
+		(event evTTUpValueReset)
+		(event evShow)
+		(var key:str = "_node && _node.key ? _node.key : ''")
+		(var minValue:number = "_node.min ? _node.min : 0")
+		(var maxValue:number = "null != _node.max ? _node.max : 10")
+		(var step:number = "null != _node.step ? _node.step : 1")
+		(var decimals:number = "null != _node.decimals ? _node.decimals : 0")
+		(var default:number = "_node.default ? _node.default : 0")
+
+		(var maxChars:number = "(maxValue >= 10000 ? 5 : maxValue >= 1000 ? 4 : maxValue >= 100 ? 3 : maxValue >= 10 ? 2 : 1)
+								+ (decimals > 0 ? decimals + 1 : 0)
+								+ (minValue < 0 ? 1 : 0)")
+		(macro TT_GET_PREF _varName="'prefData'" _key="key")
+		(var prefValue:number = "null != prefData && null != prefData.value ? prefData.value : default" watch=false (event "evShow"))
+		(bind prefValue "$event.value" watch=false init=false (event "evTTUpInputCommit"))
+		(bind prefValue "default" watch=false init=false (event "evTTUpValueReset"))
+		(var isModified:bool = "prefValue != default")
+
+
+		(var writeValue:number = "prefValue")
+	)
+	(dispatch evShow args="{}" on='addedToStage')
+
+	(bindcall externalCall 'direct.action' "['mod.setPref', [key, writeValue]]" init=false)
+
+	(style (width = "100%"))
+
+	(hblock
+		(style
+			(width = "TT_CONFIG_OPTION_WIDTH")
+			(align = "left|middle")
+		)
+		(block
+			(style
+				(width = "TT_CONFIG_OPTION_CONTROL_WIDTH")
+				(align = "middle|center")
+			)
+			(element TT_TextInputElement
+				_value = "prefValue"
+				_min = "minValue"
+				_max = "maxValue"
+				_step = "step"
+				_decimals = "decimals"
+				_maxChars = "maxChars"
+
+				_fillWidth = "true"
+			)
+		)
+		(block
+			(style
+				(marginRight = "TT_CONFIG_OPTION_VALUE_MARGIN")
+				(width = "TT_CONFIG_OPTION_VALUE_WIDTH")
+			)
+		)
+		(block
+			(bind visible "isModified")
+			(controller $Instance renderer='ImageButton'
+				(args
+					_width = "TT_CONFIG_RESET_BUTTON_SIZE"
+					_height = "TT_CONFIG_RESET_BUTTON_SIZE"
+					_backgroundImage = 'url:../service_kit/buttons/context/update.png'
+					_tooltipText = "'IDS_PREFERENCES_CONTEXT_PREF_RESET'"
+					_dispatchedEv = "'evTTUpValueReset'"
+					_dispatchParams = "{'value': default}"
+				)
+			)
+		)
+	)
+)
+
+
+(def element TT_TextOptionElement (_node:gfx) layout=true
+	(scope
+		(event evTTUpInputCommit)
+		(event evTTUpValueReset)
+		(event evShow)
+		(var key:str = "_node && _node.key ? _node.key : ''")
+		(var default:str = "null != _node.default ? _node.default : ''")
+		(var maxChars:number = "null != _node.maxLength ? _node.maxLength : 64")
+		(var minChars:number = "null != _node.minLength ? _node.minLength : 0")
+		(macro TT_GET_PREF _varName="'prefData'" _key="key")
+		(var prefValue:str = "null != prefData && null != prefData.value ? prefData.value : default" watch=false (event "evShow"))
+		(bind prefValue "$event.value" watch=false init=false (event "evTTUpInputCommit"))
+		(bind prefValue "default" watch=false init=false (event "evTTUpValueReset"))
+		(var isModified:bool = "prefValue != default")
+
+
+		(var writeValue:str = "prefValue")
+	)
+	(dispatch evShow args="{}" on='addedToStage')
+
+	(bindcall externalCall 'direct.action' "['mod.setPref', [key, writeValue]]" init=false)
+
+	(style (width = "100%"))
+
+	(hblock
+		(style
+			(width = "TT_CONFIG_OPTION_WIDTH")
+			(align = "left|middle")
+		)
+		(block
+			(style
+				(width = "TT_CONFIG_OPTION_CONTROL_WIDTH")
+				(align = "middle|center")
+			)
+			(element TT_TextInputElement
+				_isText = "true"
+				_textValue = "prefValue"
+				_maxChars = "maxChars"
+				_minChars = "minChars"
+				_fillWidth = "true"
+			)
+		)
+		(block
+			(style
+				(marginRight = "TT_CONFIG_OPTION_VALUE_MARGIN")
+				(width = "TT_CONFIG_OPTION_VALUE_WIDTH")
+			)
+		)
+		(block
+			(bind visible "isModified")
+			(controller $Instance renderer='ImageButton'
+				(args
+					_width = "TT_CONFIG_RESET_BUTTON_SIZE"
+					_height = "TT_CONFIG_RESET_BUTTON_SIZE"
+					_backgroundImage = 'url:../service_kit/buttons/context/update.png'
+					_tooltipText = "'IDS_PREFERENCES_CONTEXT_PREF_RESET'"
+					_dispatchedEv = "'evTTUpValueReset'"
+					_dispatchParams = "{'value': default}"
+				)
+			)
+		)
+	)
+)
+
+
+(def element TT_DropdownOptionElement (_node:gfx) layout=true
+	(scope
+
+		(var key:str = "_node && _node.key ? _node.key : ''")
+		(var options:array = "_node.options ? _node.options : []")
+		(var default:gfx = "_node.default ? _node.default : 0")
+		(macro TT_GET_PREF _varName="'prefData'" _key="key")
+		(var prefValue:gfx = "null != prefData && null != prefData.value ? prefData.value : default")
+
+		(var isModified:bool = "prefValue != default")
+		(var resetMethods:array = "[{type: 'direct.action', name: 'mod.resetPref', args: [key]}]")
+	)
+
+	(style (width = "100%"))
+
+
+	(hblock
+		(style
+			(width = "TT_CONFIG_OPTION_WIDTH")
+			(height = "23px")
+			(align = "left|middle")
+		)
+
+		(block
+			(style
+				(width = "TT_CONFIG_OPTION_CONTROL_WIDTH + 18")
+				(marginRight = "TT_CONFIG_OPTION_VALUE_WIDTH + TT_CONFIG_OPTION_VALUE_MARGIN - 18")
+				(align = "middle|center")
+			)
+			(element TT_Select
+				_items = "options"
+				_listItemRenderer = "'TT_SelectOption'"
+				_choosedItemRenderer = "'TT_SelectChosen'"
+				_writeAction = "'mod.setPref'"
+				_writeArg0 = "key"
+				_selectedMaxWidth = "TT_CONFIG_OPTION_CONTROL_WIDTH + 18"
+				_dropDownWidth = "250"
+				_maxDropDownHeight = "350"
+				_selectedValue = "prefValue"
+			)
+		)
+
+		(controller $Instance renderer='ImageButton'
+			(bind enabled "isModified")
+			(args
+				_width = "TT_CONFIG_RESET_BUTTON_SIZE"
+				_height = "TT_CONFIG_RESET_BUTTON_SIZE"
+				_backgroundImage = 'url:../service_kit/buttons/context/update.png'
+				_tooltipText = "'IDS_PREFERENCES_CONTEXT_PREF_RESET'"
+				_methods = "resetMethods"
+			)
+		)
+	)
+)
+
+
+(def element TT_SelectOption (_selValue:gfx=null, _valueKey:str='value', _itemText:gfx={}, _listItemRendererData:gfx={}, _isInactive:bool=false, _userPrefsNum:gfx=null) layout=true
+	(scope
+		(event evTTSelfAddedToStage)
+		(event evTTUpMenuClosed)
+
+		(macro MOUSE_HANDLER_SCOPE)
+		(var optValue:gfx = "null != _itemText[_valueKey] ? _itemText[_valueKey] : $index")
+		(var isSelected:bool = "optValue == _selValue")
+		(var phrase:str = "_itemText && _itemText.phrase ? _itemText.phrase : ''")
+		(var label:str = "tr(phrase)")
+	)
+
+	(bind name "phrase")
+	(style (width = 100%))
+
+	(block
+		(controller $Animation
+			(bindcall play duration = 0.05 from = { alpha: 1 } to = { alpha: 0.7 } reverse = "!(mouseDown)" (bind trigger "mouseDown"))
+		)
+		(class $FullsizeAbsolute)
+		(style (hitTest = false) (alpha = 1))
+
+		(block
+			(controller $Animation
+				(bindcall play duration = 0.05 from = { alpha: 1 } to = { alpha: 1.75 } reverse = "!(rollOver && !mouseDown)" (bind trigger "rollOver && !mouseDown"))
+			)
+			(class $FullsizeAbsolute)
+			(style (alpha = 1))
+
+			(block
+				(controller $Animation
+					(bindcall play duration = 0.05 from = { alpha: 0 } to = { alpha: 0.7 } reverse = "!(rollOver || isSelected)" (bind trigger "rollOver || isSelected") (event "evTTSelfAddedToStage"))
+				)
+				(class $FullsizeAbsolute)
+				(style
+					(scale9grid = 3)
+					(bind backgroundImage "_isInactive ? '' : 'url:../service_kit/panel_backgrounds/menu_item_panel.png'")
+				)
+			)
+		)
+	)
+
+	(block
+		(class $SimpleDropdownElement)
+		(style (bind alpha "_isInactive ? 0.5 : 1"))
+
+		(tf
+			(bind name "'menu_item_' + phrase")
+			(bind class "isSelected ? '$DropdownSimpleOptionTextSelected': '$DropdownSimpleOptionText'")
+			(style
+				(alpha = "TA")
+				(elideMode = true)
+				(textAlign = "left")
+			)
+			(bind text "label")
+		)
+	)
+
+	(dispatch evTTUpMenuClosed dir="EventDirection.UP" on='click' (bind enabled "!_isInactive"))
+	(dispatch evTTSelfAddedToStage dir="EventDirection.NONE" on=addedToStage)
+	(dispatch "'evTTUpItemChooserInner'" args="{ value: optValue }" dir="EventDirection.UP" on='click' (bind enabled "!_isInactive"))
+
+	(macro MOUSE_HANDLER
+		_enabled = "!_isInactive"
+		_soundSet = "'button_default'"
+	)
+)
+
+(def element TT_SelectChosen (_item:gfx={}, _selValue:gfx=null, _valueKey:str='value', _choosedItemRendererParams:gfx={}, _labelMaxWidth:number=0, _userPrefsNum:gfx=null)
+	(scope
+		(var optValue:gfx = "null != _item[_valueKey] ? _item[_valueKey] : $index")
+		(var phrase:str = "_item && _item.phrase ? _item.phrase : ''")
+		(var label:str = "tr(phrase)")
+	)
+
+	(bind visible "optValue == _selValue")
+	(style
+		(height = "L")
+		(hitTest = false)
+	)
+	(tf
+		(class $TextDefaultBold17NM)
+		(class $FontColorBlueish)
+		(style
+			(maxWidth = "_labelMaxWidth")
+			(marginLeft = 7px)
+			(marginRight = 3px)
+			(marginTop = 9px)
+			(marginBottom = 6px)
+			(elideMode = true)
+			(textAlign = "left")
+		)
+		(bind text "label")
+	)
+)
+
+
+
+(def element TT_ModSelectItemRenderer (_selValue:gfx=null, _valueKey:str='slug', _itemText:gfx={}, _listItemRendererData:gfx={}, _isInactive:bool=false, _userPrefsNum:gfx=null) layout=true
+	(scope
+		(event evTTSelfAddedToStage)
+		(event evTTUpMenuClosed)
+
+		(macro MOUSE_HANDLER_SCOPE)
+		(var optValue:gfx = "null != _itemText[_valueKey] ? _itemText[_valueKey] : $index")
+		(var isSelected:bool = "optValue == _selValue")
+
+		(var rawLabel:str = "_itemText && _itemText.modName ? _itemText.modName : (_itemText && _itemText.label ? _itemText.label : '')")
+		(var label:str = "tr(rawLabel)")
+	)
+
+	(bind name "label")
+	(style (width = 100%))
+
+	(block
+		(controller $Animation
+			(bindcall play duration = 0.05 from = { alpha: 1 } to = { alpha: 0.7 } reverse = "!(mouseDown)" (bind trigger "mouseDown"))
+		)
+		(class $FullsizeAbsolute)
+		(style (hitTest = false) (alpha = 1))
+
+		(block
+			(controller $Animation
+				(bindcall play duration = 0.05 from = { alpha: 1 } to = { alpha: 1.75 } reverse = "!(rollOver && !mouseDown)" (bind trigger "rollOver && !mouseDown"))
+			)
+			(class $FullsizeAbsolute)
+			(style (alpha = 1))
+
+			(block
+				(controller $Animation
+					(bindcall play duration = 0.05 from = { alpha: 0 } to = { alpha: 0.7 } reverse = "!(rollOver || isSelected)" (bind trigger "rollOver || isSelected") (event "evTTSelfAddedToStage"))
+				)
+				(class $FullsizeAbsolute)
+				(style
+					(scale9grid = 3)
+					(bind backgroundImage "_isInactive ? '' : 'url:../service_kit/panel_backgrounds/menu_item_panel.png'")
+				)
+			)
+		)
+	)
+
+	(block
+		(class $SimpleDropdownElement)
+		(style (bind alpha "_isInactive ? 0.5 : 1"))
+
+		(tf
+			(bind name "'menu_item_' + label")
+			(bind class "isSelected ? '$DropdownSimpleOptionTextSelected': '$DropdownSimpleOptionText'")
+			(style
+				(alpha = "TA")
+				(elideMode = true)
+				(textAlign = "left")
+			)
+			(bind text "label")
+		)
+	)
+
+	(dispatch evTTUpMenuClosed dir="EventDirection.UP" on='click' (bind enabled "!_isInactive"))
+	(dispatch evTTSelfAddedToStage dir="EventDirection.NONE" on=addedToStage)
+	(dispatch "'evTTUpItemChooserInner'" args="{ value: optValue }" dir="EventDirection.UP" on='click' (bind enabled "!_isInactive"))
+
+	(macro MOUSE_HANDLER
+		_enabled = "!_isInactive"
+		_soundSet = "'button_default'"
+	)
+)
+
+
+
+
+(def element TT_ArrowSelectChosenRenderer (_item:gfx={}, _selValue:gfx=null, _valueKey:str='value', _choosedItemRendererParams:gfx={}, _labelMaxWidth:number=0, _userPrefsNum:gfx=null)
+	(scope
+		(var optValue:gfx = "null != _item[_valueKey] ? _item[_valueKey] : $index")
+		(var label:str = "tr(_item && _item.modName ? _item.modName : (_item && _item.label ? _item.label : ''))")
+	)
+	(bind visible "optValue == _selValue")
+	(style
+		(height = 32px)
+		(align = "center|middle")
+		(hitTest = false)
+	)
+	(tf
+		(class $TextDefaultBold)
+		(style
+			(fontSize = 20)
+			(maxWidth = "_labelMaxWidth")
+			(marginLeft = 5px)
+			(marginRight = 5px)
+			(elideMode = true)
+			(textAlign = "left")
+		)
+		(bind text "label")
+	)
+)
+
+
+(def constant TT_ALPHA_CHECKER_CELL 8px)
+
+(def element TT_CheckerCell (_col:number=0, _row:number=0, _cell:number=8) layout=true
+	(bind visible "(_col + _row) % 2 == 1")
+	(style
+		(position = "absolute")
+		(bind left "_col * _cell")
+		(bind top "_row * _cell")
+		(bind width "_cell")
+		(bind height "_cell")
+		(hitTest = false)
+		(backgroundColor = 0xFF808080)
+	)
+)
+
+(def element TT_AlphaChecker (_w:number=24, _h:number=16) layout=true
+	(scope
+		(var cols:number = "ceil(_w / TT_ALPHA_CHECKER_CELL)")
+		(var rows:number = "ceil(_h / TT_ALPHA_CHECKER_CELL)")
+	)
+	(style (bind width "_w") (bind height "_h") (hitTest = false))
+	(block (class $FullsizeAbsolute) (style (backgroundColor = 0xFFC8C8C8)))
+	(controller $Repeat renderer='TT_CheckerCell' count="cols * rows"
+		(args
+			_col = "$index % cols"
+			_row = "floor($index / cols)"
+			_cell = "TT_ALPHA_CHECKER_CELL"
+		)
+	)
+)
+
+(def element TT_ColorSwatch (_value:number=0, _w:number=24, _h:number=16) layout=true
+
+	(style (bind width "_w") (bind height "_h") (hitTest = false))
+	(element TT_AlphaChecker _w="_w" _h="_h")
+	(block (class $FullsizeAbsolute) (style (bind backgroundColor "_value")))
+)
+
+
+(def element TT_ColorOptionElement (_node:gfx) layout=true
+	(scope
+		(macro MOUSE_HANDLER_SCOPE)
+		(var key:str = "_node && _node.key ? _node.key : ''")
+		(var default:number = "_node.default ? _node.default : 0")
+		(macro TT_GET_PREF _varName="'prefData'" _key="key")
+		(var packed:number = "null != prefData && null != prefData.value ? prefData.value : default")
+		(var hexText:str = "null != prefData && null != prefData.hex ? prefData.hex : '#00000000'")
+		(var isModified:bool = "packed != default")
+		(var resetMethods:array = "[{type: 'direct.action', name: 'mod.resetPref', args: [key]}]")
+
+		(event evTTUpMenuClosed)
+
+		(event evTTDownCloseAll)
+
+		(macro TT_POPUP_DEPTH_SCOPE _tag="'colour'")
+
+
+		(var isPickerOpen:bool = false watch=false)
+		(bind isPickerOpen "true"  watch=false init=false (event "evTTSelfPopupShown"))
+		(bind isPickerOpen "false" watch=false init=false (event "evTTSelfPopupHidden"))
+	)
+
+	(style (width = "100%"))
+
+	(hblock
+		(style
+			(width = "TT_CONFIG_OPTION_WIDTH")
+			(height = "23px")
+			(align = "left|middle")
+		)
+
+		(block
+			(style
+
+				(width = "TT_CONFIG_OPTION_CONTROL_WIDTH + 18")
+				(height = "L")
+				(marginRight = "TT_CONFIG_OPTION_VALUE_WIDTH + TT_CONFIG_OPTION_VALUE_MARGIN - 18")
+				(align = "left|middle")
+			)
+
+
+			(block
+				(class $FullsizeAbsolute)
+				(style (alpha = 0) (scale9grid = 4) (backgroundImage = 'url:../service_kit/buttons/button_dock/over.png'))
+				(controller $Animation
+					(bindcall play duration = 0.15 from = { alpha: 0 } to = { alpha: 1 } reverse = "!(rollOver && !mouseDown && !isPickerOpen)" (bind trigger "rollOver && !mouseDown && !isPickerOpen"))
+				)
+			)
+			(block
+				(class $FullsizeAbsolute)
+				(style (alpha = 0) (scale9grid = 4) (backgroundImage = 'url:../service_kit/buttons/button_dock/down.png'))
+				(controller $Animation
+					(bindcall play duration = 0.15 from = { alpha: 0 } to = { alpha: 1 } reverse = "!(mouseDown || isPickerOpen)" (bind trigger "mouseDown || isPickerOpen"))
+				)
+			)
+
+
+			(hblock
+				(style (width = 100%) (height = 100%) (align = "left|middle") (paddingLeft = 4px) (paddingRight = 18px))
+				(element TT_ColorSwatch _value = "packed" _w = "24px" _h = "16px")
+				(tf
+					(class $TextDefault)
+					(style (width = 100%) (marginLeft = 6px) (alpha = "TA") (elideMode = true))
+					(bind text "hexText")
+				)
+			)
+
+			(block
+				(style
+					(position = "absolute")
+					(right = 0px)
+					(align = "middle")
+					(height = 100%)
+					(marginRight = "XS")
+					(hitTest = false)
+				)
+				(block
+					(style
+						(width = 14px) (height = 14px)
+						(backgroundImage = 'url:../service_kit/buttons/icon_navigate/down.png')
+					)
+				)
+			)
+
+			(macro MOUSE_HANDLER _soundSet = "'dropdown'")
+
+			(controller $Tooltip
+				(renderer = 'TT_ColorPickerElement')
+				(args _key = "key" _data = "prefData")
+
+				(macro TT_POPUP_BEHAVIOUR)
+
+							)
+		)
+
+		(controller $Instance renderer='ImageButton'
+			(bind enabled "isModified")
+			(args
+				_width = "TT_CONFIG_RESET_BUTTON_SIZE"
+				_height = "TT_CONFIG_RESET_BUTTON_SIZE"
+				_backgroundImage = 'url:../service_kit/buttons/context/update.png'
+				_tooltipText = "'IDS_PREFERENCES_CONTEXT_PREF_RESET'"
+				_methods = "resetMethods"
+			)
+		)
+	)
+)
+
+(def element TT_ColorPickerElement (_key:str, _data:gfx={}) layout=true
+	(scope
+		(event evTTUpChannelChanged)
+		(event evTTUpPickerModeChanged)
+		(event evTTDownSliderShow)
+		(event evTTDownTrackCtx)
+
+
+		(var canHsv:bool = "'hsv' == (_data.pickerMode ? _data.pickerMode : 'rgb')")
+		(var mode:str = "canHsv ? 'hsv' : 'argb'")
+		(bind mode "$event.mode" watch=false init=false (event "evTTUpPickerModeChanged"))
+
+		(var aEditable:bool = "null != _data.aEditable ? _data.aEditable : true")
+		(var rEditable:bool = "null != _data.rEditable ? _data.rEditable : true")
+		(var gEditable:bool = "null != _data.gEditable ? _data.gEditable : true")
+		(var bEditable:bool = "null != _data.bEditable ? _data.bEditable : true")
+
+		(var aMin:number = "_data.aMin ? _data.aMin : 0") (var aMax:number = "null != _data.aMax ? _data.aMax : 255")
+		(var rMin:number = "_data.rMin ? _data.rMin : 0") (var rMax:number = "null != _data.rMax ? _data.rMax : 255")
+		(var gMin:number = "_data.gMin ? _data.gMin : 0") (var gMax:number = "null != _data.gMax ? _data.gMax : 255")
+		(var bMin:number = "_data.bMin ? _data.bMin : 0") (var bMax:number = "null != _data.bMax ? _data.bMax : 255")
+
+		(var a:number = "null != _data.a255 ? _data.a255 : 255")
+		(var r:number = "null != _data.r255 ? _data.r255 : 255")
+		(var g:number = "null != _data.g255 ? _data.g255 : 255")
+		(var b:number = "null != _data.b255 ? _data.b255 : 255")
+
+		(bind a "true == $event.armed && $event.channel == 'a' ? $event.value : a" watch=false init=false (event "evTTUpChannelChanged"))
+		(bind r "true == $event.armed && $event.channel == 'r' ? $event.value : r" watch=false init=false (event "evTTUpChannelChanged"))
+		(bind g "true == $event.armed && $event.channel == 'g' ? $event.value : g" watch=false init=false (event "evTTUpChannelChanged"))
+		(bind b "true == $event.armed && $event.channel == 'b' ? $event.value : b" watch=false init=false (event "evTTUpChannelChanged"))
+
+
+		(var cmax:number = "max(r, max(g, b))")
+		(var cmin:number = "min(r, min(g, b))")
+		(var chroma:number = "cmax - cmin")
+
+
+		(var h:number = "null != _data.h ? _data.h : (chroma == 0 ? 0 : ((((60 * (cmax == r ? (g - b) / chroma : cmax == g ? (b - r) / chroma + 2 : (r - g) / chroma + 4)) % 360) + 360) % 360))" watch=false)
+		(var s:number = "null != _data.s ? _data.s : (cmax == 0 ? 0 : 100 * chroma / cmax)" watch=false)
+		(var v:number = "null != _data.v ? _data.v : 100 * cmax / 255" watch=false)
+
+
+		(bind h "true != $event.armed ? h : $event.channel == 'h' ? (true == $event.typed || $event.value != round(h) ? $event.value : h) : ('r' == $event.channel || 'g' == $event.channel || 'b' == $event.channel) ? (chroma == 0 ? h : ((((60 * (cmax == r ? (g - b) / chroma : cmax == g ? (b - r) / chroma + 2 : (r - g) / chroma + 4)) % 360) + 360) % 360)) : h" watch=false init=false (event "evTTUpChannelChanged"))
+		(bind s "true != $event.armed ? s : $event.channel == 's' ? (true == $event.typed || $event.value != round(s) ? $event.value : s) : ('r' == $event.channel || 'g' == $event.channel || 'b' == $event.channel) ? (cmax == 0 ? s : 100 * chroma / cmax) : s" watch=false init=false (event "evTTUpChannelChanged"))
+		(bind v "true != $event.armed ? v : $event.channel == 'v' ? (true == $event.typed || $event.value != round(v) ? $event.value : v) : ('r' == $event.channel || 'g' == $event.channel || 'b' == $event.channel) ? (100 * cmax / 255) : v" watch=false init=false (event "evTTUpChannelChanged"))
+
+
+		(var hueColor:number = "TT_HUE_CTX_COLORS[min(71, floor((((h % 360) + 360) % 360) / 5))]")
+		(var satOverlayAlpha:number = "1 - v / 100")
+		(var valOverlayAlpha:number = "1 - s / 100")
+
+
+	)
+
+
+	(bindcall externalCall "true == $event.armed && ('h' == $event.channel || 's' == $event.channel || 'v' == $event.channel) ? 'direct.action' : ''" "['mod.setPrefHsv', [_key, h, s, v, a]]" init=false watch=false (event "evTTUpChannelChanged"))
+	(bindcall externalCall "true == $event.armed && ('a' == $event.channel || 'r' == $event.channel || 'g' == $event.channel || 'b' == $event.channel) ? 'direct.action' : ''" "['mod.setPrefRgb', [_key, r, g, b, a]]" init=false watch=false (event "evTTUpChannelChanged"))
+
+
+	(dispatch evTTDownTrackCtx dir="EventDirection.DOWN" args="{ctxColor: hueColor, ctxSatAlpha: satOverlayAlpha, ctxValAlpha: valOverlayAlpha}" (event "evTTUpChannelChanged") (event "evTTUpPickerModeChanged"))
+
+	(macro TOOLTIP_SYSTEM_DEFAULT_BACKGROUND)
+
+
+	(block
+		(class $FullsizeAbsolute)
+		(style (backgroundColor = 0x00FFFFFF))
+	)
+
+	(element TOOLTIP_SYSTEM_DEFAULT_CONTAINER
+		(style
+
+
+			(width = 300px)
+			(align = "middle|center")
+		)
+
+		(dispatch evTTDownSliderShow dir="EventDirection.DOWN" args="{}" (event "evTTUpPickerModeChanged"))
+
+
+		(hblock
+			(bind visible "canHsv")
+			(style (width = 100%) (align = "top|center") (marginBottom = 2px))
+			(element TT_PickerModeTab _label = "'HSV'" _mode = "'hsv'" _isSelected = "mode == 'hsv'")
+			(element TT_PickerModeTab _label = "'ARGB'" _mode = "'argb'" _isSelected = "mode == 'argb'")
+		)
+
+
+		(element TT_ColorChannelSlider _label="'A'" _channel="'a'" _value="a" _min="aMin" _max="aMax" _enabled="aEditable" _track="'TT_ChannelSliderTrackAlpha'")
+
+
+		(block
+			(bind visible "mode == 'argb' || !canHsv")
+			(style (width = 100%))
+			(element TT_ColorChannelSlider _label="'R'" _channel="'r'" _value="r" _min="rMin" _max="rMax" _enabled="rEditable" _track="'TT_ChannelSliderTrackRed'")
+			(element TT_ColorChannelSlider _label="'G'" _channel="'g'" _value="g" _min="gMin" _max="gMax" _enabled="gEditable" _track="'TT_ChannelSliderTrackGreen'")
+			(element TT_ColorChannelSlider _label="'B'" _channel="'b'" _value="b" _min="bMin" _max="bMax" _enabled="bEditable" _track="'TT_ChannelSliderTrackBlue'")
+		)
+
+
+		(block
+			(bind visible "canHsv && mode == 'hsv'")
+			(style (width = 100%))
+			(element TT_ColorChannelSlider _label="'H'" _channel="'h'" _value="h" _min="0" _max="360" _track="'TT_ChannelSliderTrackHue'")
+			(element TT_ColorChannelSlider _label="'S'" _channel="'s'" _value="s" _min="0" _max="100" _track="'TT_ChannelSliderTrackSatDyn'" _ctxColor="hueColor" _ctxSatAlpha="satOverlayAlpha" _ctxValAlpha="valOverlayAlpha")
+			(element TT_ColorChannelSlider _label="'V'" _channel="'v'" _value="v" _min="0" _max="100" _track="'TT_ChannelSliderTrackValDyn'" _ctxColor="hueColor" _ctxSatAlpha="satOverlayAlpha" _ctxValAlpha="valOverlayAlpha")
+		)
+	)
+)
+
+
+(def element TT_PickerModeTab (_label:str='', _mode:str='', _isSelected:bool=false, _width:number=70) layout=true
+	(scope
+		(macro MOUSE_HANDLER_SCOPE)
+		(event evTTUpPickerModeChanged)
+
+		(var state:number = "_isSelected ? SC.Ui_styles.BUTTON_STATE.SELECTED : mouseDown ? SC.Ui_styles.BUTTON_STATE.DOWN : rollOver ? SC.Ui_styles.BUTTON_STATE.OVER : SC.Ui_styles.BUTTON_STATE.UP")
+		(var labelAlpha:number = "TAB_BUTTON_LABEL_ALPHA[state]")
+		(var lineAlpha:number = "TAB_BUTTON_LINE_ALPHA[state]")
+	)
+
+	(style
+		(width = "_width")
+		(height = 24px)
+		(align = "center|middle")
+	)
+
+
+	(block
+		(style (bind alpha "labelAlpha" watch=false))
+		(macro DEFAULT_CONTROL_STATE_ANIMATION_ALPHA _trigger="state" _alpha="labelAlpha")
+		(tf
+			(class $TextDefaultBold12NM)
+			(bind text "_label")
+		)
+	)
+
+	(block
+		(style
+			(position = "absolute")
+			(bind alpha "lineAlpha" watch=false)
+			(width = 100%)
+			(bottom = 0px)
+			(height = 2px)
+			(backgroundColor = 0xFFFFFFFF)
+		)
+		(macro DEFAULT_CONTROL_STATE_ANIMATION_ALPHA _trigger="state" _alpha="lineAlpha")
+	)
+
+	(macro MOUSE_HANDLER
+		_enabled = "!_isSelected"
+		_dispatchedEv = "'evTTUpPickerModeChanged'"
+		_dispatchParams = "{mode: _mode}"
+		_soundSet = "'button_tab'"
+	)
+)
+
+
+(def element TT_StepperButton (_glyph:str='', _dir:number=0, _enabled:bool=true, _size:number=18) layout=true
+	(scope
+		(macro MOUSE_HANDLER_SCOPE)
+
+		(var isDown:bool = "_enabled && mouseDown")
+		(var isRollover:bool = "_enabled && rollOver")
+		(var ctRollOver:dict = "{redMultiplier: 1, greenMultiplier: 1, blueMultiplier: 1, alphaMultiplier: 1, redOffset: 15, greenOffset: 15, blueOffset: 15, alphaOffset: 0}")
+		(var ctDown:dict = "{redMultiplier: 1, greenMultiplier: 1, blueMultiplier: 1, alphaMultiplier: 1, redOffset: -15, greenOffset: -15, blueOffset: -15, alphaOffset: 0}")
+	)
+	(style
+		(width = "_size")
+		(height = "_size")
+		(align = "center|middle")
+		(bind alpha "_enabled ? 1.0 : 0.3")
+		(bind hitTest "_enabled")
+	)
+	(block
+		(class $FullsizeAbsolute)
+		(style
+			(hitTest = false)
+			(backgroundImage = 'url:../service_kit/buttons/backgrounds/default.png')
+			(scale9grid = 10)
+		)
+	)
+
+	(block
+		(bind visible "isRollover || isDown")
+		(bind colorTransform "isRollover && !isDown ? ctRollOver : isDown ? ctDown : CT_NONE")
+		(class $FullsizeAbsolute)
+		(style
+			(hitTest = false)
+			(backgroundImage = 'url:../service_kit/buttons/backgrounds/default.png')
+			(scale9grid = 10)
+		)
+	)
+	(tf
+		(class $TextDefaultBold12NM)
+		(style (align = "center|middle") (hitTest = false))
+		(bind text "_glyph")
+	)
+	(macro MOUSE_HANDLER
+		_enabled = "_enabled"
+		_dispatchedEv = "'evTTUpStep'"
+		_dispatchParams = "{dir: _dir}"
+		_soundSet = "'button'"
+	)
+)
+
+
+(def element TT_ColorChannelSlider (_label:str, _channel:str, _value:number, _min:number=0, _max:number=255, _enabled:bool=true, _track:str='TT_ChannelSliderTrackNeutral', _ctxColor:number=0xFFFFFFFF, _ctxSatAlpha:number=0, _ctxValAlpha:number=0) layout=true
+	(scope
+		(event evTTUpSliderValueChanged)
+		(event evTTUpChannelChanged)
+
+		(event evTTDownSliderShow)
+		(event evTTUpInputCommit)
+
+		(event evTTDownSliderReseed)
+
+		(event evTTUpStep)
+
+		(var displayValue:number = "_value" watch=false)
+		(bind displayValue "_value" watch=false init=false (event "evTTDownSliderShow"))
+
+		(var relayArmed:bool = false)
+		(bind relayArmed "true == $event.armed" watch=false init=false (event "evTTUpSliderValueChanged"))
+		(bind displayValue "true == $event.armed ? $event.value : displayValue" watch=false init=false (event "evTTUpSliderValueChanged"))
+
+
+		(bind displayValue "$event.value" watch=false init=false (event "evTTUpInputCommit"))
+		(bind relayArmed "true" watch=false init=false (event "evTTUpInputCommit"))
+
+
+		(bind displayValue "max(_min, min(_max, round(displayValue) + $event.dir))" watch=false init=false (event "evTTUpStep"))
+		(bind relayArmed "true" watch=false init=false (event "evTTUpStep"))
+
+
+		(var relayTyped:bool = false)
+		(bind relayTyped "false" watch=false init=false (event "evTTUpSliderValueChanged"))
+		(bind relayTyped "true" watch=false init=false (event "evTTUpInputCommit"))
+		(bind relayTyped "true" watch=false init=false (event "evTTUpStep"))
+	)
+
+	(dispatch evTTUpChannelChanged dir="EventDirection.UP" args="{channel: _channel, value: displayValue, armed: relayArmed, typed: relayTyped}" (event "evTTUpSliderValueChanged") (event "evTTUpInputCommit") (event "evTTUpStep"))
+
+
+	(dispatch evTTDownSliderReseed dir="EventDirection.DOWN" args="{value: displayValue}" (event "evTTUpInputCommit") (event "evTTUpStep"))
+
+	(style
+		(width = 100%)
+		(height = 24px)
+		(align = "left|middle")
+		(bind alpha "_enabled ? 1.0 : 0.3")
+		(bind hitTest "_enabled")
+	)
+	(hblock
+		(style (width = 100%) (align = "left|middle"))
+		(tf (class $TextDefault) (bind text "_label") (style (width = 16px)))
+		(element TT_ChannelSlider
+			_value = "_value"
+			_min = "_min"
+			_max = "_max"
+
+			_width = "160"
+			_track = "_track"
+			_ctxColor = "_ctxColor"
+			_ctxSatAlpha = "_ctxSatAlpha"
+			_ctxValAlpha = "_ctxValAlpha"
+		)
+		(hblock
+
+			(style (align = "left|middle") (marginLeft = 8px) (gap = 2px))
+			(element TT_StepperButton _glyph = "'-'" _dir = "-1" _enabled = "_enabled")
+
+			(element TT_TextInputElement
+				_value = "displayValue"
+				_min = "_min"
+				_max = "_max"
+				_height = "22"
+				_maxChars = "3"
+
+
+				_enabled = "_enabled"
+			)
+			(element TT_StepperButton _glyph = "'+'" _dir = "1" _enabled = "_enabled")
+		)
+	)
+)
+
+
+(def element TT_SliderThumb ()
+	(scope
+		(event evTTUpSliderThumbDown)
+	)
+
+	(bindcall externalCall 'sound.playSetSoundDirect' "['slider', SoundEvent.PRESS]" init=false watch=false on='mouseDown')
+
+	(dispatch evTTUpSliderThumbDown args="{isDown: true}" on='mouseDown' dir="EventDirection.UP")
+
+	(style
+		(align = "center")
+		(marginTop = -6px)
+		(width = 10px)
+		(height = 22px)
+		(backgroundColor = 0x01000000)
+	)
+
+	(block
+		(class $Fullsize)
+		(style
+			(backgroundImage = 'url:../service_kit/slider/slider_thumb.png')
+		)
+	)
+)
+
+
+(def element TT_ChannelSlider (_value:number, _min:number=0, _max:number=255, _singleStep:number=1, _width:number=160, _track:str='TT_ChannelSliderTrackNeutral', _ctxColor:number=0xFFFFFFFF, _ctxSatAlpha:number=0, _ctxValAlpha:number=0) layout=true
+	(scope
+		(event evTTUpSliderValueChanged)
+		(event evTTDownSliderValueChangedForTrack)
+
+		(event evTTDownSliderShow)
+		(event evTTSelfSliderShow)
+
+		(event evTTDownSliderReseed)
+		(event evTTDownTrackCtx)
+
+		(event evTTSelfRollOver)
+		(event evTTSelfRollOut)
+		(event evTTSelfMouseDown)
+		(event evTTSelfStageMouseUp)
+
+
+		(event evTTUpSliderThumbDown)
+
+		(event evTTSelfChannelSliderChangedInternal)
+		(var curValue:number = "$event ? $event.newValue : _value" (event "evTTSelfChannelSliderChangedInternal"))
+
+		(var rollOver:bool = "$event.isOver" init=false watch=false (event "evTTSelfRollOver") (event "evTTSelfRollOut"))
+		(var isMouseDown:bool = "$event.isDown" init=false watch=false (event "evTTSelfMouseDown") (event "evTTUpSliderThumbDown") (event "evTTSelfStageMouseUp"))
+
+
+		(var armed:bool = false)
+		(bind armed "false" watch=false init=false (event "evTTDownSliderShow") (event "evTTSelfSliderShow") (event "evTTDownSliderReseed"))
+		(bind armed "true" watch=false init=false (event "evTTSelfRollOver") (event "evTTSelfMouseDown") (event "evTTUpSliderThumbDown"))
+
+
+		(var ctxColor:number = "_ctxColor" watch=false)
+		(var ctxSatAlpha:number = "_ctxSatAlpha" watch=false)
+		(var ctxValAlpha:number = "_ctxValAlpha" watch=false)
+		(bind ctxColor "$event.ctxColor" watch=false init=false (event "evTTDownTrackCtx"))
+		(bind ctxSatAlpha "$event.ctxSatAlpha" watch=false init=false (event "evTTDownTrackCtx"))
+		(bind ctxValAlpha "$event.ctxValAlpha" watch=false init=false (event "evTTDownTrackCtx"))
+	)
+
+	(dispatch evTTSelfRollOver		on='rollOver'	args="{isOver: true}")
+	(dispatch evTTSelfRollOut			on='rollOut'	args="{isOver: false}")
+
+	(dispatch evTTSelfStageMouseUp	on='stageMouseUp'	args="{isDown: false}")
+	(dispatch evTTSelfMouseDown		on='mouseDown'		args="{isDown: true}")
+
+
+	(controller $Animation
+		(bindcall play duration=0.1 to="{colorTransform:{redOffset: 15, greenOffset: 15, blueOffset: 15}}" action="kill" init=true watch=false (bind enabled "rollOver && !isMouseDown"))
+		(bindcall play duration=0.05 to="{colorTransform:{redOffset: -20, greenOffset: -20, blueOffset: -20}}" action="kill" init=true watch=false (bind enabled "isMouseDown"))
+		(bindcall play duration=0.15 to="{colorTransform:{redOffset: 0, greenOffset: 0, blueOffset: 0}}" action="kill" init=true watch=false (bind enabled "!rollOver && !isMouseDown"))
+	)
+
+
+	(dispatch evTTSelfSliderShow args="{}" on='addedToStage')
+
+
+	(dispatch evTTUpSliderValueChanged args="{value: curValue, armed: armed}" dir="EventDirection.UP" (event "evTTSelfChannelSliderChangedInternal"))
+
+
+	(dispatch evTTDownSliderValueChangedForTrack args="{value: curValue - _min, intervalsCount: max(1, _max - _min), ctxColor: ctxColor, ctxSatAlpha: ctxSatAlpha, ctxValAlpha: ctxValAlpha}" dir="EventDirection.DOWN" (event "evTTUpSliderValueChanged"))
+	(dispatch evTTDownSliderValueChangedForTrack args="{value: curValue - _min, intervalsCount: max(1, _max - _min), ctxColor: ctxColor, ctxSatAlpha: ctxSatAlpha, ctxValAlpha: ctxValAlpha}" dir="EventDirection.DOWN" (event "evTTDownSliderShow") (event "evTTSelfSliderShow") (event "evTTDownSliderReseed"))
+	(dispatch evTTDownSliderValueChangedForTrack args="{value: curValue - _min, intervalsCount: max(1, _max - _min), ctxColor: ctxColor, ctxSatAlpha: ctxSatAlpha, ctxValAlpha: ctxValAlpha}" dir="EventDirection.DOWN" (event "evTTDownTrackCtx"))
+
+	(bindcall externalCall 'sound.playSetSoundDirect' "['slider', SoundEvent.OVER]" init=false watch=false on='rollOver')
+	(bindcall externalCall 'sound.playSetSoundDirect' "['slider', SoundEvent.PRESS]" init=false watch=false on='mouseDown')
+	(bindcall externalCall 'sound.playSetSoundDirect' "['slider', SoundEvent.CHANGE]" init=false watch=false (event "evTTSelfChannelSliderChangedInternal"))
+
+	(scroll_bar
+		(style (width = "_width"))
+
+		(bind minimum "_min")
+		(bind maximum "_max")
+
+		(bind value "round(_value)" watch=false (event "evTTDownSliderShow") (event "evTTSelfSliderShow"))
+		(bind value "round($event.value)" watch=false init=false (event "evTTDownSliderReseed"))
+
+		(singleStep = "_singleStep")
+		(scrollDuration = 2)
+
+		(orientation = "horizontal")
+		(alignThumbToBorders = false)
+
+		(thumb = 'TT_SliderThumb')
+		(track = "_track")
+
+		(dispatch evTTSelfChannelSliderChangedInternal on='valueChanged' dir="EventDirection.NONE")
+	)
+)
+
+
+
+
+(def macro TT_CHANNEL_SLIDER_TRACK_HIT ()
+	(block
+		(style
+			(position = "absolute")
+			(top = -6px)
+			(width = 100%)
+			(height = 22px)
+			(backgroundColor = 0x00FFFFFF)
+		)
+	)
+)
+
+
+(def macro TT_CHANNEL_SLIDER_TRACK_STRIP (_image:expression)
+	(block
+		(style
+			(height = 10px)
+			(width = 100%)
+			(hitTest = false)
+			(bind backgroundImage "_image")
+			(backgroundSize = "fill")
+		)
+	)
+	(macro TT_CHANNEL_SLIDER_TRACK_HIT)
+)
+
+
+(def element TT_ChannelSliderTrackAlpha () (macro TT_CHANNEL_SLIDER_TRACK_STRIP _image="'url:../ttaro/mod_utils/color_picker/alpha_track.png'"))
+(def element TT_ChannelSliderTrackRed () (macro TT_CHANNEL_SLIDER_TRACK_STRIP _image="'url:../ttaro/mod_utils/color_picker/red_track.png'"))
+(def element TT_ChannelSliderTrackGreen () (macro TT_CHANNEL_SLIDER_TRACK_STRIP _image="'url:../ttaro/mod_utils/color_picker/green_track.png'"))
+(def element TT_ChannelSliderTrackBlue () (macro TT_CHANNEL_SLIDER_TRACK_STRIP _image="'url:../ttaro/mod_utils/color_picker/blue_track.png'"))
+
+(def element TT_ChannelSliderTrackHue () (macro TT_CHANNEL_SLIDER_TRACK_STRIP _image="'url:../ttaro/mod_utils/color_picker/hue_strip.png'"))
+
+
+(def constant TT_HUE_CTX_COLORS [0xFFFF0000, 0xFFFF1500, 0xFFFF2A00, 0xFFFF4000, 0xFFFF5500, 0xFFFF6A00, 0xFFFF8000, 0xFFFF9500, 0xFFFFAA00, 0xFFFFBF00, 0xFFFFD400, 0xFFFFEA00, 0xFFFFFF00, 0xFFEAFF00, 0xFFD4FF00, 0xFFBFFF00, 0xFFAAFF00, 0xFF95FF00, 0xFF80FF00, 0xFF6AFF00, 0xFF55FF00, 0xFF40FF00, 0xFF2BFF00, 0xFF15FF00, 0xFF00FF00, 0xFF00FF15, 0xFF00FF2A, 0xFF00FF40, 0xFF00FF55, 0xFF00FF6A, 0xFF00FF80, 0xFF00FF95, 0xFF00FFAA, 0xFF00FFBF, 0xFF00FFD5, 0xFF00FFEA, 0xFF00FFFF, 0xFF00EAFF, 0xFF00D5FF, 0xFF00BFFF, 0xFF00AAFF, 0xFF0095FF, 0xFF0080FF, 0xFF006AFF, 0xFF0055FF, 0xFF0040FF, 0xFF002AFF, 0xFF0015FF, 0xFF0000FF, 0xFF1500FF, 0xFF2B00FF, 0xFF4000FF, 0xFF5500FF, 0xFF6A00FF, 0xFF8000FF, 0xFF9500FF, 0xFFAA00FF, 0xFFBF00FF, 0xFFD400FF, 0xFFEA00FF, 0xFFFF00FF, 0xFFFF00EA, 0xFFFF00D4, 0xFFFF00BF, 0xFFFF00AA, 0xFFFF0095, 0xFFFF0080, 0xFFFF006A, 0xFFFF0055, 0xFFFF0040, 0xFFFF002B, 0xFFFF0015])
+
+
+
+
+(def element TT_ChannelSliderTrackSatDyn ()
+	(scope
+		(event evTTDownSliderValueChangedForTrack)
+
+		(var ctxColor:number = 0xFFFF00FF)
+		(var ctxAlpha:number = 0)
+		(bind ctxColor "null != $event.ctxColor ? $event.ctxColor : ctxColor" watch=false init=false (event "evTTDownSliderValueChangedForTrack"))
+		(bind ctxAlpha "null != $event.ctxSatAlpha ? $event.ctxSatAlpha : ctxAlpha" watch=false init=false (event "evTTDownSliderValueChangedForTrack"))
+	)
+
+	(block
+		(style
+			(height = 10px)
+			(width = 100%)
+			(hitTest = false)
+			(bind backgroundColor "ctxColor")
+		)
+		(block
+			(class $FullsizeAbsolute)
+			(style
+				(backgroundImage = 'url:../ttaro/mod_utils/color_picker/white_ramp.png')
+				(backgroundSize = "fill")
+			)
+		)
+		(block
+			(class $FullsizeAbsolute)
+			(style
+				(backgroundColor = 0xFF000000)
+				(bind alpha "ctxAlpha")
+			)
+		)
+	)
+
+	(macro TT_CHANNEL_SLIDER_TRACK_HIT)
+)
+
+
+(def element TT_ChannelSliderTrackValDyn ()
+	(scope
+		(event evTTDownSliderValueChangedForTrack)
+
+		(var ctxColor:number = 0xFFFF00FF)
+		(var ctxAlpha:number = 0)
+		(bind ctxColor "null != $event.ctxColor ? $event.ctxColor : ctxColor" watch=false init=false (event "evTTDownSliderValueChangedForTrack"))
+		(bind ctxAlpha "null != $event.ctxValAlpha ? $event.ctxValAlpha : ctxAlpha" watch=false init=false (event "evTTDownSliderValueChangedForTrack"))
+	)
+
+	(block
+		(style
+			(height = 10px)
+			(width = 100%)
+			(hitTest = false)
+			(bind backgroundColor "ctxColor")
+		)
+		(block
+			(class $FullsizeAbsolute)
+			(style
+				(backgroundColor = 0xFFFFFFFF)
+				(bind alpha "ctxAlpha")
+			)
+		)
+		(block
+			(class $FullsizeAbsolute)
+			(style
+				(backgroundImage = 'url:../ttaro/mod_utils/color_picker/black_ramp.png')
+				(backgroundSize = "fill")
+			)
+		)
+	)
+
+	(macro TT_CHANNEL_SLIDER_TRACK_HIT)
+)
+
+
+(def element TT_ChannelSliderTrackNeutral () (macro TT_CHANNEL_SLIDER_TRACK_STRIP _image="'url:../service_kit/slider/slider_track.png'"))
+
+(def element TT_ButtonOptionElement (_node:gfx) layout=true
+	(scope
+		(var actions:array = "_node.actions ? _node.actions : []")
+		(var labelKey:str = "null != _node.label ? _node.label : 'IDS_RESET'")
+		(var resolvedLabel:str = "tr(labelKey)")
+	)
+
+	(style (width = "100%"))
+
+	(hblock
+		(style
+			(width = "TT_CONFIG_OPTION_WIDTH")
+			(height = "23px")
+			(align = "left|middle")
+		)
+		(element TT_DefaultButton
+			_width = "TT_CONFIG_OPTION_CONTROL_WIDTH"
+			_size = "SIZE.SMALL"
+			_enabled = true
+			_label = "resolvedLabel"
+			_methods = "actions"
+		)
+	)
+)
+
+
+(def element TT_PositionOptionElement (_node:gfx) layout=true
+	(scope
+		(var key:str = "_node && _node.key ? _node.key : ''")
+		(var resetMethods:array = "[{type: 'direct.action', name: 'mod.resetPosition', args: [key]}]")
+		(var resetLabel:str = "tr('IDS_RESET')")
+	)
+	(style (width = "100%"))
+	(hblock
+		(style
+			(width = "TT_CONFIG_OPTION_WIDTH")
+			(height = "23px")
+			(align = "left|middle")
+		)
+		(element TT_DefaultButton
+			_width = "TT_CONFIG_OPTION_CONTROL_WIDTH"
+			_size = "SIZE.SMALL"
+			_enabled = true
+			_label = "resetLabel"
+			_methods = "resetMethods"
+		)
+	)
+)
+
+
+
+(def element TT_MinimapSwitchOptionElement (_node:gfx) layout=true
+	(scope
+		(var key:str = "_node && _node.key ? _node.key : ''")
+
+		(var entityWatcher:gfx = "$datahub.getPrimWatcher(CC.minimapOption, key)")
+		(var optionEntity:gfx = "entityWatcher.entity" (event "entityWatcher.event"))
+		(var minimapOption:gfx = "optionEntity ? optionEntity.minimapOption : null")
+		(var prefValue:bool = "minimapOption ? minimapOption.value > 0 : false" (event "minimapOption.evValueChanged"))
+		(var isOptionAvailable:bool = "optionEntity")
+
+		(var defaultValue:bool = "_node.default ? _node.default : false")
+		(var resetMethods:array = "[ { type: 'direct.action', name: 'battle.saveMinimapOption', args: [ key, defaultValue ] } ]")
+		(var saveMethods:array = "[ { type: 'direct.action', name: 'battle.saveMinimapOption', args: [ key, !prefValue ] } ]")
+	)
+
+	(bind visible "isOptionAvailable")
+	(style (width = "100%"))
+
+	(hblock
+		(style (width = "TT_CONFIG_OPTION_WIDTH") (height = "23px") (align = "left|middle"))
+		(hblock
+			(style
+				(width = "TT_CONFIG_OPTION_CONTROL_WIDTH")
+				(align = "middle|center")
+				(marginRight = "TT_CONFIG_OPTION_VALUE_WIDTH + TT_CONFIG_OPTION_VALUE_MARGIN")
+			)
+			(element SwitchWithoutLabel _state = "prefValue" _methods = "saveMethods")
+		)
+		(controller $Instance renderer='ImageButton'
+			(bind enabled "prefValue != defaultValue")
+			(args
+				_width = "TT_CONFIG_RESET_BUTTON_SIZE"
+				_height = "TT_CONFIG_RESET_BUTTON_SIZE"
+				_backgroundImage = 'url:../service_kit/buttons/context/update.png'
+				_tooltipText = "'IDS_PREFERENCES_CONTEXT_PREF_RESET'"
+				_methods = "resetMethods"
+			)
+		)
+	)
+)
+
+(def element TT_MinimapSliderOptionElement (_node:gfx) layout=true
+	(scope
+		(event evTTUpSliderValueChanged)
+		(event evTTUpValueReset)
+		(event evShow)
+
+		(var key:str = "_node && _node.key ? _node.key : ''")
+
+		(var entityWatcher:gfx = "$datahub.getPrimWatcher(CC.minimapOption, key)")
+		(var optionEntity:gfx = "entityWatcher.entity" (event "entityWatcher.event"))
+		(var minimapOption:gfx = "optionEntity ? optionEntity.minimapOption : null")
+		(var prefValue:number = "minimapOption ? minimapOption.value : 0" (event "minimapOption.evValueChanged"))
+		(var isOptionAvailable:bool = "optionEntity")
+
+		(var minValue:number = "_node.min ? _node.min : 0")
+		(var maxValue:number = "null != _node.max ? _node.max : 100")
+		(var minLabel:str = "_node.minLabel ? _node.minLabel : ''")
+		(var maxLabel:str = "_node.maxLabel ? _node.maxLabel : ''")
+		(var step:number = "null != _node.step ? _node.step : 1")
+		(var steps:number = "round((maxValue - minValue) / step)")
+		(var defaultValue:number = "null != _node.default ? _node.default : 20")
+		(var defaultSliderValue:number = "round((defaultValue - minValue) / step)")
+		(var rounding:number = "_node.decimals ? _node.decimals : 0")
+
+		(var sliderValue:number = "round((prefValue - minValue) / step)" watch=false (event "evShow"))
+		(bind sliderValue "$event.value" watch=false init=false (event "evTTUpValueReset") (event "evTTUpSliderValueChanged"))
+
+		(var isMinLabelAvailable:bool = "prefValue == minValue && minLabel")
+		(var isMaxLabelAvailable:bool = "prefValue == maxValue && maxLabel")
+		(var displayedCount:str = "	isMinLabelAvailable ? minLabel :
+									isMaxLabelAvailable ? maxLabel :
+									formatFloatingPoint(prefValue, rounding)"
+		)
+	)
+
+	(bind visible "isOptionAvailable")
+	(dispatch evShow args="{}" on='addedToStage')
+	(bindcall externalCall 'direct.action' "['battle.saveMinimapOption', [key, $event.value * step + minValue]]" init=false watch=false (event "evTTUpSliderValueChanged") (event "evTTUpValueReset"))
+
+	(style (width = "100%"))
+
+	(hblock
+		(style (width = "TT_CONFIG_OPTION_WIDTH") (height = "23px") (align = "left|middle"))
+		(hblock
+			(style (align = "middle|center"))
+			(element DefaultSlider
+				_value = "sliderValue"
+				_intervalsCount = "steps"
+				_unitsInStepInterval = "step"
+				_width = "TT_CONFIG_OPTION_CONTROL_WIDTH"
+			)
+			(tf
+				(class $TextDefault)
+				(alpha = "TA")
+				(bind text "displayedCount")
+				(style
+					(textAlign = "right")
+					(marginRight = "TT_CONFIG_OPTION_VALUE_MARGIN")
+					(width = "TT_CONFIG_OPTION_VALUE_WIDTH")
+				)
+			)
+		)
+		(block
+			(bind visible "prefValue != defaultValue")
+			(controller $Instance renderer='ImageButton'
+				(args
+					_width = "TT_CONFIG_RESET_BUTTON_SIZE"
+					_height = "TT_CONFIG_RESET_BUTTON_SIZE"
+					_backgroundImage = 'url:../service_kit/buttons/context/update.png'
+					_tooltipText = "'IDS_PREFERENCES_CONTEXT_PREF_RESET'"
+					_dispatchedEv = "'evTTUpValueReset'"
+					_dispatchParams = "{'value': defaultSliderValue}"
+				)
+			)
+		)
+	)
+)
+
+(def element TT_MinimapDropdownOptionElement (_node:gfx) layout=true
+	(scope
+
+		(var key:str = "_node && _node.key ? _node.key : ''")
+
+		(var entityWatcher:gfx = "$datahub.getPrimWatcher(CC.minimapOption, key)")
+		(var optionEntity:gfx = "entityWatcher.entity" (event "entityWatcher.event"))
+		(var minimapOption:gfx = "optionEntity ? optionEntity.minimapOption : null")
+		(var prefValue:number = "minimapOption ? minimapOption.value : 0" (event "minimapOption.evValueChanged"))
+		(var isOptionAvailable:bool = "optionEntity")
+
+		(var defaultValue:number = "_node.default ? _node.default : 0")
+		(var options:array = "_node.options ? _node.options : []")
+		(var resetMethods:array = "[{ type: 'direct.action', name: 'battle.saveMinimapOption', args: [ key, defaultValue ] }]")
+	)
+
+	(style (width = "100%"))
+	(bind visible "isOptionAvailable")
+
+
+
+	(hblock
+		(style (width = "TT_CONFIG_OPTION_WIDTH") (height = "23px") (align = "left|middle"))
+
+		(block
+			(style
+				(width = "TT_CONFIG_OPTION_CONTROL_WIDTH + 18")
+				(marginRight = "TT_CONFIG_OPTION_VALUE_WIDTH + TT_CONFIG_OPTION_VALUE_MARGIN - 18")
+				(align = "middle|center")
+			)
+			(element TT_Select
+				_items = "options"
+				_listItemRenderer = "'TT_SelectOption'"
+				_choosedItemRenderer = "'TT_SelectChosen'"
+				_writeAction = "'battle.saveMinimapOption'"
+				_writeArg0 = "key"
+				_selectedMaxWidth = "TT_CONFIG_OPTION_CONTROL_WIDTH + 18"
+				_dropDownWidth = "250"
+				_maxDropDownHeight = "350"
+				_selectedValue = "prefValue"
+			)
+		)
+
+		(controller $Instance renderer='ImageButton'
+			(bind enabled "prefValue != defaultValue")
+			(args
+				_width = "TT_CONFIG_RESET_BUTTON_SIZE"
+				_height = "TT_CONFIG_RESET_BUTTON_SIZE"
+				_backgroundImage = 'url:../service_kit/buttons/context/update.png'
+				_tooltipText = "'IDS_PREFERENCES_CONTEXT_PREF_RESET'"
+				_methods = "resetMethods"
+			)
+		)
+	)
+)
+
+
+
+
+(def element TT_GroupTriggerElement (_node:gfx, _slug:str) layout=true
+	(scope
+		(macro MOUSE_HANDLER_SCOPE)
+
+		(var moreText:str = "tr('IDS_TT_MORE_OPTIONS')")
+
+		(event evTTUpMenuClosed)
+
+		(macro TT_POPUP_DEPTH_SCOPE _tag="'popup'")
+
+
+		(event evTTDownCloseAll)
+
+
+
+		(var isPopupOpen:bool = false watch=false)
+		(bind isPopupOpen "true"  watch=false init=false (event "evTTSelfPopupShown"))
+		(bind isPopupOpen "false" watch=false init=false (event "evTTSelfPopupHidden"))
+	)
+
+	(style (width = "100%"))
+
+	(hblock
+		(style
+			(width = "TT_CONFIG_OPTION_WIDTH")
+			(height = "23px")
+			(align = "left|middle")
+		)
+
+
+		(block
+			(style
+				(width = "TT_CONFIG_OPTION_WIDTH")
+				(height = "L")
+				(align = "left|middle")
+			)
+
+			(block
+				(class $FullsizeAbsolute)
+				(style (alpha = 0) (scale9grid = 4) (backgroundImage = 'url:../service_kit/buttons/button_dock/over.png'))
+				(controller $Animation
+					(bindcall play duration = 0.15 from = { alpha: 0 } to = { alpha: 1 } reverse = "!(rollOver && !mouseDown && !isPopupOpen)" (bind trigger "rollOver && !mouseDown && !isPopupOpen"))
+				)
+			)
+			(block
+				(class $FullsizeAbsolute)
+				(style (alpha = 0) (scale9grid = 4) (backgroundImage = 'url:../service_kit/buttons/button_dock/down.png'))
+				(controller $Animation
+					(bindcall play duration = 0.15 from = { alpha: 0 } to = { alpha: 1 } reverse = "!(mouseDown || isPopupOpen)" (bind trigger "mouseDown || isPopupOpen"))
+				)
+			)
+
+
+			(hblock
+				(style (width = 100%) (height = 100%) (align = "middle|center") (paddingLeft = 6px) (paddingRight = 18px))
+				(tf
+					(class $TextDefault)
+					(bind text "moreText")
+					(style
+						(width = 100%)
+						(textAlign = "center")
+						(alpha = "TC")
+						(elideMode = true)
+						(hitTest = false)
+					)
+				)
+			)
+
+
+			(block
+				(style
+					(position = "absolute")
+					(right = 0px)
+					(align = "middle")
+					(height = 100%)
+					(marginRight = "XS")
+					(hitTest = false)
+				)
+				(block
+					(style
+						(width = 14px) (height = 14px)
+						(backgroundImage = 'url:../service_kit/buttons/icon_navigate/down.png')
+					)
+				)
+			)
+
+			(macro MOUSE_HANDLER _soundSet = "'dropdown'")
+
+			(controller $Tooltip
+				(renderer = 'TT_GroupPopupElement')
+				(args _node = "_node" _slug = "_slug")
+
+
+				(macro TT_POPUP_BEHAVIOUR)
+			)
+		)
+	)
+)

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 5,
+  "opVocabularyVersion": 3,
+  "slug": "ttaro-mod-config",
+  "migrations": [
+    {
+      "version": 1,
+      "description": "flat keys → dotted ancestry keys",
+      "ops": [
+        {
+          "op": "rename",
+          "from": "hotReloadEnabled",
+          "to": "ttModConfig.hotReloadEnabled"
+        },
+        {
+          "op": "rename",
+          "from": "saveMode",
+          "to": "ttModConfig.saveMode"
+        }
+      ]
+    }
+  ],
+  "legacyPositions": [
+    {
+      "key": "ttModConfig.position",
+      "element": "ttaroModConfig"
+    }
+  ]
+}

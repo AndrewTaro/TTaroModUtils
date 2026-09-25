@@ -1,0 +1,10 @@
+<mod name="TTaroModUtils" version="1.1.0" priority="0">
+  <requires installer="&gt;=1.0.0"/>
+
+
+  <ubMountInBattle unbound="2"
+                   rootElementId="TTaroModUtils"
+                   name="unbound2TTaroModUtils"
+                   hitTest="true"
+                   after="MainHud"/>
+</mod>

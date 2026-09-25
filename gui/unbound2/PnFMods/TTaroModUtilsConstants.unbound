@@ -1,0 +1,30 @@
+
+
+(def constant TT_CONFIG_RENDERERS {
+	toggle		: 'TT_SwitchOptionElement',
+	slider		: 'TT_SliderOptionElement',
+	dropdown	: 'TT_DropdownOptionElement',
+	'number'	: 'TT_NumericInputOptionElement',
+	text		: 'TT_TextOptionElement',
+	color		: 'TT_ColorOptionElement',
+	button		: 'TT_ButtonOptionElement',
+	position	: 'TT_PositionOptionElement',
+})
+
+
+
+(def constant TT_MINIMAP_RENDERERS {
+	toggle		: 'TT_MinimapSwitchOptionElement',
+	slider		: 'TT_MinimapSliderOptionElement',
+	dropdown	: 'TT_MinimapDropdownOptionElement',
+})
+
+
+
+(def constant TT_DROPWDOWN_RENDERERS {
+	DEFAULT: {
+		DROPDOWN	: 'TT_SelectList',
+		ITEM		: 'TT_SelectOption',
+		CHOSEN_ITEM	: 'TT_SelectChosen',
+	},
+})

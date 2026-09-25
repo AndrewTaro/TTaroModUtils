@@ -1,0 +1,210 @@
+
+
+
+
+
+(def macro TT_DRAGGABLE_POSITION (_fullKey:expression)
+	(macro TT_GET_PREF _varName="'__dragPos'" _key="_fullKey")
+	(var __ttMouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
+	(var __ttDragActive:bool = "__ttMouse.active" (event "__ttMouse.evActiveChanged"))
+
+	(var dragX:number = "null != __dragPos && null != __dragPos.value && isNumber(__dragPos.value.x) ? __dragPos.value.x : 0")
+	(var dragY:number = "null != __dragPos && null != __dragPos.value && isNumber(__dragPos.value.y) ? __dragPos.value.y : 0")
+
+
+	(var __ttDsE:gfx = "$datahub.getPrimaryEntity(CC.mods_DataComponent, 'modPrefs.dragState')")
+	(var __ttDsC:gfx = "__ttDsE ? __ttDsE.mods_DataComponent : null")
+	(var __ttDsD:gfx = "__ttDsC ? __ttDsC.data : null" (event "__ttDsC.evDataChanged"))
+	(var __ttDragging:bool = "__ttDsD ? __ttDsD.isDragging : false")
+)
+
+
+
+
+(def macro TT_DRAGGABLE (_fullKey:expression, _isDragEnabled:expression = "true")
+	(controller $Instance renderer='TT_ModDraggableSignifier'
+		(bind enabled "_isDragEnabled")
+	)
+
+	(controller $Tooltip
+		(renderer = 'TT_ModDraggableTooltipHelp')
+		(macro TT_STATUS_TOOLTIP_BEHAVIOUR "0")
+	)
+
+	(bindcall externalCall 'direct.action'
+		"['mod.startDragging', [_fullKey, {left: $globalLayoutBounds[0], top: $globalLayoutBounds[1], w: $globalLayoutBounds[2], h: $globalLayoutBounds[3]}]]"
+		init=false watch=false on='mouseDown' (bind enabled "_isDragEnabled"))
+	(bindcall externalCall 'direct.action'
+		"['mod.stopDragging', [_fullKey]]"
+		init=false watch=false on='stageMouseUp' (bind enabled "_isDragEnabled"))
+
+	(bindcall externalCall 'direct.action'
+		"['mod.stopDragging', [_fullKey]]"
+		init=false watch=false
+		(bind enabled "_isDragEnabled && !__ttDragActive")(bind trigger "__ttDragActive"))
+
+
+
+	(bindcall externalCall 'direct.action'
+		"['mod.reportGeometry', [_fullKey, {w: $globalLayoutBounds[2], h: $globalLayoutBounds[3], pox: dragX - $globalLayoutBounds[0], poy: dragY - $globalLayoutBounds[1]}]]"
+		init=false watch=false on='addedToStage' (event "$evLayoutBoundsChanged") (bind enabled "!__ttDragging"))
+)
+
+
+
+(def element TT_ModDraggableSignifier() layout=true
+	(scope
+		(var __sigMouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
+		(var __sigActive:bool = "__sigMouse.active" (event "__sigMouse.evActiveChanged"))
+	)
+	(class $FullsizeAbsolute)
+	(style (zindex = "ZIndex.BACKGROUND"))
+
+	(mc contrast_panel
+		(class $FullsizeAbsolute)
+		(bind alpha "0.4")
+		(bind visible "__sigActive")
+	)
+
+	(controller $Animation
+		(bindcall play
+			to		 = "{alpha: 0.3}"
+			duration = 0.15
+			action	 = "killAll"
+			(bind enabled "!__sigActive")
+			(bind trigger "__sigActive")
+		)
+		(bindcall play
+			to		 = "{alpha: 1.0}"
+			duration = 0.15
+			action	 = "killAll"
+			(bind enabled "__sigActive")
+			(bind trigger "__sigActive")
+		)
+	)
+)
+
+
+(def element TT_ModDraggableKeyIndicatorItem(_keyCode:number, _size:number="1", _active:bool="false")
+	(scope
+		(var inputKeyEntityWatcher:gfx = "$datahub.getPrimWatcher(CC.inputKey, _keyCode)")
+		(var inputKeyEntity:gfx = "inputKeyEntityWatcher.entity" (event "inputKeyEntityWatcher.event"))
+		(var inputKeyComp:gfx = "inputKeyEntity ? inputKeyEntity.inputKey : null")
+
+		(var keyPureName:str = "inputKeyComp ? inputKeyComp.pureName : ''")
+		(var keyName:str = "inputKeyComp ? inputKeyComp.name : ''")
+		(var isShortKeyName:bool = "keyPureName.length == 1")
+
+		(var hotKeyState:number = "_active ? HotkeyState.POSITIVE : HotkeyState.DEFAULT")
+
+		(var hotkeySize:number = "HOTKEY_SIZE[_size]")
+		(var marginForText:number = "_size == SIZE.SMALL ? 4px : 6px")
+		(var hotkeyScaleSize:number = "HOTKEY_SCALE_ANIMATION_SIZE[_size]")
+
+		(var paramScaleX:number = "($globalLayoutBounds[2] + hotkeyScaleSize) / max(1, $globalLayoutBounds[2])" (event "$evLayoutBoundsChanged"))
+		(var paramScaleY:number = "($globalLayoutBounds[3] + hotkeyScaleSize) / max(1, $globalLayoutBounds[3])" (event "$evLayoutBoundsChanged"))
+	)
+	(style
+		(bind minWidth "hotkeySize")
+		(bind minHeight "hotkeySize")
+		(align = "center|middle")
+		(bind maxWidth "isShortKeyName ? hotkeySize : 999")
+	)
+
+	(element HotkeyBackground _hotkeyState="hotKeyState"
+		(class $FullsizeAbsolute)
+
+		(element HotkeyBackground _hotkeyState="hotKeyState"
+			(class $FullsizeAbsolute)
+			(style
+				(pivotX = 50%)
+				(pivotY = 50%)
+				(left = 0%)
+				(top = 0%)
+			)
+			(visible = false)
+			(controller $Animation
+				(bindcall play 	from="{scaleX:1, scaleY:1, alpha:1.0, visible:true}"
+								to="{scaleX:paramScaleX, scaleY:paramScaleY, alpha:0.0, visible:false}"
+								watch=false
+								duration=0.25
+								(bind enabled "_active")
+								(bind trigger "_active")
+				)
+			)
+		)
+	)
+	(tf
+		(style
+			(bind marginLeft "marginForText")
+			(bind marginRight "marginForText")
+		)
+		(bind class "HOTKEY_FONTS[_size]")
+
+		(bind text "inputKeyEntity	? (isShortKeyName || NOT_LOCALIZE_KEYS[keyPureName])	? toUpper(tr(keyPureName))
+																							: toUpper(tr('IDS_' + keyName))
+									: ''")
+	)
+)
+
+
+(def element TT_ModDraggableTooltipHelp()
+	(scope
+		(var draggableText:str = "tr('IDS_TT_HINT_DRAGGABLE_ELEMENT')")
+		(var titleText:str = "tr('IDS_TT_HINT_DRAGGABLE_SNAP')")
+		(var descText:str = "tr('IDS_TT_HINT_DRAGGABLE_SNAP_DESC')")
+		(var replayText:str = "tr('IDS_TT_HINT_DRAGGABLE_SNAP_REPLAY')")
+
+
+		(var __ttDsEntity:gfx = "$datahub.getPrimaryEntity(CC.mods_DataComponent, 'modPrefs.dragState')")
+		(var __ttDsComp:gfx = "__ttDsEntity ? __ttDsEntity.mods_DataComponent : null")
+		(var __ttDsData:gfx = "__ttDsComp ? __ttDsComp.data : null" (event "__ttDsComp.evDataChanged"))
+		(var isSnapMode:bool = "__ttDsData ? __ttDsData.isSnapMode : false")
+
+
+		(var __ttBattle:gfx = "$datahub.getSingleComponent(CC.battleInfo)")
+		(var isReplay:bool = "__ttBattle ? __ttBattle.isReplayPlaying : false")
+	)
+	(style
+		(hitTest = false)
+		(width = 300px)
+	)
+
+	(macro TOOLTIP_SYSTEM_DEFAULT_BACKGROUND)
+
+	(element TOOLTIP_SYSTEM_DEFAULT_CONTAINER
+
+		(element TooltipSystemHeaderWithIconAndText
+			_imageUrl		= "'url:../service_kit/unified_status_icons/icon_' + SC.Ui_styles.UNIFIED_STATUS.INFO + '.png'"
+			_imageWidth		= 19px
+			_imageHeight	= 19px
+			_headerText		= "draggableText"
+			_unifiedStatus	= "SC.Ui_styles.UNIFIED_STATUS.NOTIFICATION"
+		)
+
+		(element TooltipSystemHorizontalDivider)
+
+		(hblock
+			(style
+				(align = "middle|center")
+				(hgap = "S")
+				(marginBottom = "S")
+			)
+			(bind visible "!isReplay")
+			(element TT_ModDraggableKeyIndicatorItem _keyCode=42 _active="isSnapMode")
+			(tf
+				(class $TextDefaultBoldNM)
+				(bind text "titleText")
+			)
+		)
+		(element TooltipSystemDescriptionText
+			_descriptionText = "descText"
+			(bind visible "!isReplay")
+		)
+
+		(element TooltipSystemDescriptionText
+			_descriptionText = "replayText"
+			(bind visible "isReplay")
+		)
+	)
+)
