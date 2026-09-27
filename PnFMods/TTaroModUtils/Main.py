@@ -105,6 +105,8 @@ class Framework(object):
         self._geom = {}
         self._posPublished = {}
         self._pageCounts = {}
+
+        self._colorHsv = {}
         self._cursor = CursorHold()
 
 
@@ -171,9 +173,13 @@ class Framework(object):
             pass
 
 
+
+    def _configSlugs(self):
+        return [s for s in self._index.displaySlugs() if not self._store.isLocked(s)]
+
     def _publishShared(self):
         mods = []
-        for slug in self._index.displaySlugs():
+        for slug in self._configSlugs():
             tree = self._publishTree(slug)
             pages = _pagesFor(tree)
 
@@ -201,6 +207,7 @@ class Framework(object):
             'modName': self._index.modName(fwSlug),
             'tree': tree,
             'pages': _pagesFor(tree),
+            'locked': self._store.isLocked(fwSlug),
         }
 
 
@@ -247,7 +254,7 @@ class Framework(object):
         return blob if isinstance(blob, dict) else {}
 
     def _uiStateData(self):
-        slugs = self._index.displaySlugs()
+        slugs = self._configSlugs()
         tab = self._uiState.get('selectedTab', '')
         if tab not in slugs:
             tab = slugs[0] if slugs else ''
@@ -278,7 +285,7 @@ class Framework(object):
             self._uiState[SELECTED_PAGE_PATH] = cleaned
             stored = cleaned
         out = {}
-        for slug in self._index.displaySlugs():
+        for slug in self._configSlugs():
             value = stored.get(slug, 0)
             if not isinstance(value, (int, long)) or isinstance(value, bool) or value < 0:
                 value = 0
@@ -352,7 +359,8 @@ class Framework(object):
             conds = self._index.conditionsFor(slug, fullKey)
             visible = Conditions.evaluate(conds, self._valueOf(slug), installed)
         if node.get('control') == 'color':
-            data = ColorMath.derive(value, node.get('min'), node.get('max'))
+            data = ColorMath.derive(value, node.get('min'), node.get('max'),
+                                    self._colorHsv.get(fullKey))
         elif node.get('control') == 'position':
             data = {'value': self._resolvePositionFor(slug, fullKey)}
         else:
@@ -646,6 +654,43 @@ class Framework(object):
             return
         self.setPref(fullKey, packed)
 
+    def setColorChannel(self, fullKey, channel, value, typed=False):
+        slug = self._index.ownerSlug(fullKey)
+        storeKey = self._sk(fullKey)
+        node = self._index.node(slug, storeKey) if slug is not None else None
+        if node is None or node.get('control') != 'color':
+            logError('setColorChannel: not a colour setting ' + str(fullKey))
+            return
+        if channel not in ColorMath.CHANNELS and channel not in ColorMath.HSV_RANGE:
+            logError('setColorChannel: unknown channel %r for %s' % (channel, fullKey))
+            return
+        stored = self._store.getEffective(slug, storeKey)
+        old = ColorMath.workingHsv(stored, self._colorHsv.get(fullKey))
+        edit = ColorMath.editChannel(stored, old, channel, value, Validate.toBool(typed))
+        if edit is None:
+            return
+        raw, hsv = edit
+        packed = Validate.validate(node, raw)
+
+        if packed == stored and (packed != raw or channel in ColorMath.CHANNELS):
+            return
+
+        self._colorHsv[fullKey] = hsv
+        if packed == stored:
+
+            self._updateComponent(slug, fullKey, stored)
+            return
+        self.setPref(fullKey, packed)
+
+    def releaseColorPicker(self, fullKey):
+
+
+        if self._colorHsv.pop(fullKey, None) is None:
+            return
+        slug = self._index.ownerSlug(fullKey)
+        if slug is not None:
+            self._updateComponent(slug, fullKey, self._store.getEffective(slug, self._sk(fullKey)))
+
     def setPrefs(self, slug, values):
         if not isinstance(values, dict):
             return
@@ -677,7 +722,8 @@ class Framework(object):
         storeKey = self._sk(fullKey)
         if slug is None or storeKey not in self._index.positionKeys(slug):
             return
-        self._store.removePositionBucket(slug, storeKey, Util.resKey())
+        if not self._store.removePositionBucket(slug, storeKey, Util.resKey()):
+            return
         self._updateComponent(slug, fullKey, None)
         self._scheduleFlush(slug)
 
@@ -834,7 +880,8 @@ class Framework(object):
             return
         validated = Validate.validate(node, value)
         self._store.set(slug, storeKey, validated)
-        self._updateComponent(slug, fullKey, validated)
+
+        self._updateComponent(slug, fullKey, self._store.getEffective(slug, storeKey))
 
     def _updateComponent(self, slug, fullKey, value):
         installed = self._index.installedMods()

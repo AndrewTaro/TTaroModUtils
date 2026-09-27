@@ -6,6 +6,7 @@
   "slug": "ttaro-mod-config",
   "order": 24,
   "framework": true,
+  "migrationVersion": 1,
   "tree": [
     {
       "kind": "setting",

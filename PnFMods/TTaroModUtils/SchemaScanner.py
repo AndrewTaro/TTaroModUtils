@@ -117,8 +117,6 @@ def _hasPathChars(text):
 
 
 def _validMigrations(data, name):
-    if data is None:
-        return True
     if not isinstance(data, dict):
         logError('migrations %s: not an object -- refusing' % name)
         return False
@@ -140,10 +138,16 @@ def _validMigrations(data, name):
         logError('migrations %s: `migrations` is not a list -- refusing' % name)
         return False
 
+    seen = set()
     for m in migrations:
         if not isinstance(m, dict):
             logError('migrations %s: migration entry is not an object -- refusing' % name)
             return False
+        v = m.get('version')
+        if not _isCount(v) or v < 1 or v in seen:
+            logError('migrations %s: version %r is not a unique int >= 1 -- refusing' % (name, v))
+            return False
+        seen.add(v)
         for op in (m.get('ops') or []):
             if not isinstance(op, dict):
                 logError('migrations %s: op is not an object -- refusing' % name)
@@ -173,6 +177,10 @@ def _validMigrations(data, name):
                          % (name, op.get('transform') or kind))
                 return False
     return True
+
+
+def _isCount(v):
+    return isinstance(v, (int, long)) and not isinstance(v, bool) and v >= 0
 
 
 class SchemaIndex(object):
@@ -210,7 +218,13 @@ class SchemaIndex(object):
             'conditions': {},
             'groupConditions': {},
             'migrationFile': None,
+            'declaredTarget': None,
         }
+        declared = data.get('migrationVersion')
+        if _isCount(declared):
+            record['declaredTarget'] = declared
+        elif declared is not None:
+            logError('schema %s: migrationVersion %r is not an int >= 0 -- ignored' % (modAddr, declared))
         self._walk(data.get('tree', []), record)
         self._mods[modAddr] = record
         if record['framework']:
@@ -293,11 +307,38 @@ class SchemaIndex(object):
             self._mods.keys(),
             key=lambda s: (self._mods[s]['order'], s))
         for slug in self._order:
-            mf = Util.readJson(self._migrationPath(slug))
-            refused = not _validMigrations(mf, slug)
-            self._mods[slug]['migrationFile'] = None if refused else mf
-            self._mods[slug]['migrationRefused'] = refused
+            self._loadMigrations(self._mods[slug])
         self._warnPrefixCollisions()
+
+
+    def _loadMigrations(self, record):
+        path = self._migrationPath(record['modAddr'])
+        mf = None
+        if not Util.isFile(path):
+            status = 'missing'
+        else:
+            mf = Util.readJson(path)
+            if mf is None:
+                status = 'corrupt'
+            elif _validMigrations(mf, record['modAddr']):
+                status = 'ok'
+            else:
+                status = 'refused'
+        if status != 'ok':
+            mf = None
+        versions = set(m['version'] for m in (mf or {}).get('migrations') or [])
+        target = record['declaredTarget']
+        if target is None:
+
+
+            if status == 'ok' or status == 'missing':
+                target = max(versions) if versions else 0
+            logInfo('schema %s: no migrationVersion; target from migrations file (%s)'
+                    % (record['modAddr'], status))
+        record['migrationFile'] = mf
+        record['migrationStatus'] = status
+        record['migrationVersions'] = versions
+        record['migrationTarget'] = target
 
     def _warnPrefixCollisions(self):
         found = []
@@ -381,8 +422,16 @@ class SchemaIndex(object):
     def migrationFile(self, slug):
         return self._mods.get(slug, {}).get('migrationFile')
 
-    def migrationRefused(self, slug):
-        return bool(self._mods.get(slug, {}).get('migrationRefused'))
+
+    def migrationStatus(self, slug):
+        return self._mods.get(slug, {}).get('migrationStatus', 'missing')
+
+    def migrationVersions(self, slug):
+        return self._mods.get(slug, {}).get('migrationVersions', set())
+
+
+    def migrationTarget(self, slug):
+        return self._mods.get(slug, {}).get('migrationTarget')
 
     def legacyPositions(self, slug):
         mf = self._mods.get(slug, {}).get('migrationFile')

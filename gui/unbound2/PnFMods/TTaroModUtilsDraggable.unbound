@@ -170,16 +170,28 @@
 		(width = 300px)
 	)
 
-	(macro TOOLTIP_SYSTEM_DEFAULT_BACKGROUND)
+	(macro TT_TOOLTIP_SYSTEM_DEFAULT_BACKGROUND)
 
 	(element TOOLTIP_SYSTEM_DEFAULT_CONTAINER
 
-		(element TooltipSystemHeaderWithIconAndText
-			_imageUrl		= "'url:../service_kit/unified_status_icons/icon_' + SC.Ui_styles.UNIFIED_STATUS.INFO + '.png'"
-			_imageWidth		= 19px
-			_imageHeight	= 19px
-			_headerText		= "draggableText"
-			_unifiedStatus	= "SC.Ui_styles.UNIFIED_STATUS.NOTIFICATION"
+		(block
+			(style (width = "100%") (minHeight = 19px) (flow = "horizontal") (align = "middle"))
+			(block
+				(style (height = "100%") (align = "top") (marginRight = "SXS"))
+				(block
+					(style
+						(width = 19px)
+						(height = 19px)
+						(backgroundSize = "cover")
+						(bind backgroundImage "'url:../service_kit/unified_status_icons/icon_' + SC.Ui_styles.UNIFIED_STATUS.INFO + '.png'")
+					)
+				)
+			)
+			(element TooltipSystemHeaderSubheaderText
+				_headerText		= "draggableText"
+				_subheaderText	= "''"
+				_unifiedStatus	= "SC.Ui_styles.UNIFIED_STATUS.NOTIFICATION"
+			)
 		)
 
 		(element TooltipSystemHorizontalDivider)

@@ -12,7 +12,7 @@
 							_dropDownWidth:number=140, _selectedMaxWidth:number=0, _choosedItemRenderer:str='', _choosedItemRendererParams:gfx={}, _userPrefsNum:gfx=null, _centerChosen:bool=false,
 							_showNavigateIcon:bool=true) layout=true
 	(scope
-		(macro MOUSE_HANDLER_SCOPE)
+		(macro TT_MOUSE_HANDLER_SCOPE)
 		(event evTTDownCloseAll)
 		(event evTTUpMenuClosed)
 		(event evTTUpItemChooserInner)
@@ -79,7 +79,7 @@
 
 	(controller $Tooltip
 		(bind enabled "tooltipData")
-		(renderer = 'SimpleStatusTooltip')
+		(renderer = 'TT_SimpleStatusTooltip')
 		(args
 			_text = "tooltipData._text"
 		)
@@ -186,7 +186,7 @@
 		)
 	)
 
-	(macro MOUSE_HANDLER
+	(macro TT_MOUSE_HANDLER
 		_enabled = "isEnabled"
 		_soundSet = "'dropdown'"
 	)
@@ -197,7 +197,7 @@
 	(scope
 		(var dockDataEntity:gfx = "$datahub.getSingleEntity(CC.dockData)")
 		(var isShipOverviewEnabled:bool = "dockDataEntity ? dockDataEntity.dockData.isShipOverviewEnabled : false" (event "dockDataEntity.dockData.evIsShipOverviewEnabledChanged"))
-		(macro MOUSE_HANDLER_SCOPE)
+		(macro TT_MOUSE_HANDLER_SCOPE)
 		
 		(var itemHeight:number = "INFOTIP_DEFAULT_TEXT_LIST_ITEM_RENDERER_ITEM_HEIGHT")
 		(var infotipHeight:number = "_maxDropDownHeight >= _items.length * itemHeight	? _items.length * itemHeight
@@ -205,10 +205,10 @@
 		
 	)
 
-	(macro TOOLTIP_SYSTEM_DEFAULT_BACKGROUND "true")
+	(macro TT_TOOLTIP_SYSTEM_DEFAULT_BACKGROUND "true")
 
 	(bindcall externalCall 'inputMapping.onAction' "['battleChat.rollOverChanged', { rollOver: rollOver }]" init=false watch=false (bind trigger "rollOver"))
-	(macro MOUSE_EVENTS_DISPATCHER)
+	(macro TT_MOUSE_EVENTS)
 
 	(style
 		(position = "absolute")
@@ -289,7 +289,7 @@
 		(event evTTSelfAddedToStage)
 		(event evTTUpMenuClosed)
 
-		(macro MOUSE_HANDLER_SCOPE)
+		(macro TT_MOUSE_HANDLER_SCOPE)
 		(var optValue:gfx = "_itemText")
 		(var isSelected:bool = "optValue == _selValue")
 	)
@@ -372,7 +372,7 @@
 	(dispatch evTTSelfAddedToStage dir="EventDirection.NONE" on=addedToStage)
 	(dispatch "'evTTUpItemChooserInner'" args="{ value: optValue }" dir="EventDirection.UP" on='click' (bind enabled "!_isInactive"))
 
-	(macro MOUSE_HANDLER
+	(macro TT_MOUSE_HANDLER
 		_enabled = "!_isInactive"
 		_soundSet = "'button_default'"
 	)
@@ -413,7 +413,7 @@
 							_focusIndex:number=0, _clickInterval:number=0, _defaultFocused:bool=false,
 							_dispatchedEv:str='', _dispatchParams:gfx={}, _methods:array=[], _tooltipText:str='') layout=true
 	(scope
-		(macro MOUSE_HANDLER_SCOPE)
+		(macro TT_MOUSE_HANDLER_SCOPE)
 		
 		(var isFocused:bool = false)
 		(var isDisabledVisual:bool = "!_enabled")
@@ -529,7 +529,7 @@
 
 	(macro INPUT "_name")
 
-	(macro MOUSE_HANDLER
+	(macro TT_MOUSE_HANDLER
 		_enabled = "_enabled"
 		_dispatchedEv = "_dispatchedEv"
 		_dispatchParams = "_dispatchParams"
@@ -538,7 +538,7 @@
 	)
 
 	(controller $Tooltip
-		(renderer='SimpleStatusTooltip')
+		(renderer='TT_SimpleStatusTooltip')
 		(bind enabled "_tooltipText")
 		(args
 			_text = "_tooltipText"
@@ -568,7 +568,7 @@
 		(width = 320)
 		(hitTest = false)
 	)
-	(macro TOOLTIP_SYSTEM_DEFAULT_BACKGROUND)
+	(macro TT_TOOLTIP_SYSTEM_DEFAULT_BACKGROUND)
 
 	(element TOOLTIP_SYSTEM_DEFAULT_CONTAINER
 		(style
@@ -617,7 +617,7 @@
 	
 	(class $FullsizeAbsolute)
 
-	(controller $Instance renderer='InfotipSystemBlur'
+	(controller $Instance renderer='TT_InfotipSystemBlur'
 		(bind enabled "!isHighContrast")
 		(exprs
 			(style
@@ -651,7 +651,7 @@
 (def element TT_TabButton (_label:str='', _isSelected:bool=false, _isDisabled:bool=false, _width:number=120,
 						_dispatchedEv:str='', _dispatchParams:gfx={}, _methods:array=[], _name:str='') layout=true
 	(scope
-		(macro MOUSE_HANDLER_SCOPE)
+		(macro TT_MOUSE_HANDLER_SCOPE)
 
 		(var state:number = "	_isDisabled	? SC.Ui_styles.BUTTON_STATE.DISABLED :
 								_isSelected	? SC.Ui_styles.BUTTON_STATE.SELECTED :
@@ -755,7 +755,7 @@
 		(macro DEFAULT_CONTROL_STATE_ANIMATION_ALPHA _trigger="state" _alpha="lineAlpha")
 	)
 
-	(macro MOUSE_HANDLER
+	(macro TT_MOUSE_HANDLER
 		_enabled = "!_isDisabled && !_isSelected"
 		_dispatchedEv = "_dispatchedEv"
 		_dispatchParams = "_dispatchParams"
@@ -780,12 +780,13 @@
 
 
 
-(def element TT_TextInputElement (_value:number, _isText:bool=false, _textValue:str='', _minChars:number=0, _min:number=0, _max:number=255, _width:number=0, _height:number=22, _maxChars:number=3, _enabled:bool=true, _step:number=1, _decimals:number=0, _fillWidth:bool=false, _minLabel:str='', _maxLabel:str='', _atMin:bool=false, _atMax:bool=false) layout=true
+(def element TT_TextInputElement (_value:number, _isText:bool=false, _textValue:str='', _minChars:number=0, _min:number=0, _max:number=255, _width:number=0, _height:number=22, _maxChars:number=3, _enabled:bool=true, _step:number=1, _decimals:number=0, _fillWidth:bool=false, _minLabel:str='', _maxLabel:str='', _atMin:bool=false, _atMax:bool=false, _writeAction:str='', _writeArg0:gfx='') layout=true
 	(scope
 		(event evTTSelfInputSeed)
 		(event evTTSelfInputKeyDown)
 		(event evTTSelfInputEnter)
 		(event evTTSelfInputEsc)
+		(event evTTSelfInputCommit)
 		(event evTTUpInputCommit)
 		(event evTTDownCommitPending)
 		(event evTTSelfInputFocusIn)
@@ -806,7 +807,7 @@
 
 		(var textInput:str = '')
 		(bind textInput "shownValue" watch=false init=false (event "evTTSelfInputSeed"))
-		(bind textInput "shownCommit" watch=false init=false (event "evTTUpInputCommit"))
+		(bind textInput "shownCommit" watch=false init=false (event "evTTSelfInputCommit"))
 		(bind textInput "shownValue" watch=false init=false (event "evTTSelfInputEsc"))
 
 		(var isFocused:bool = false)
@@ -821,7 +822,7 @@
 		(bind dirty "true" watch=false init=false (event "evTTSelfInputTyped"))
 
 		(bind dirty "true" watch=false init=false (bind enabled "keyCode == TT_BACKSPACE_KEY || keyCode == TT_DELETE_KEY") (event "evTTSelfInputKeyDown"))
-		(bind dirty "false" watch=false init=false (event "evTTUpInputCommit") (event "evTTSelfInputSeed") (event "evTTSelfInputEsc"))
+		(bind dirty "false" watch=false init=false (event "evTTSelfInputCommit") (event "evTTSelfInputSeed") (event "evTTSelfInputEsc"))
 
 
 
@@ -880,7 +881,7 @@
 
 
 		(var justSaved:bool = false)
-		(bind justSaved "true" watch=false init=false (event "evTTUpInputCommit"))
+		(bind justSaved "true" watch=false init=false (event "evTTSelfInputCommit"))
 		(bind justSaved "false" watch=false init=false (event "evTTSelfInputFlashEnd"))
 
 
@@ -914,21 +915,24 @@
 
 
 	(dispatch evTTSelfInputSeed args="{}" on='addedToStage')
-	(dispatch evTTSelfInputSeed args="{}" (bind trigger "_value"))
 
-	(dispatch evTTSelfInputSeed args="{}" (bind trigger "_textValue"))
+	(dispatch evTTSelfInputSeed args="{}" (bind trigger "shownValue"))
 
 
 	(dispatch evTTSelfInputEnter args="{}" (bind enabled "keyCode == TT_INPUT_KEY_ENTER || keyCode == TT_INPUT_KEY_NUMPAD_ENTER") (event "evTTSelfInputKeyDown"))
 	(dispatch evTTSelfInputEsc args="{}" (bind enabled "keyCode == TT_INPUT_KEY_ESC") (event "evTTSelfInputKeyDown"))
 
 
-	(dispatch evTTUpInputCommit dir="EventDirection.UP" args="{value: commitValue}" (bind enabled "isValid && dirty") (event "evTTSelfInputEnter"))
+	(dispatch evTTSelfInputCommit args="{value: commitValue}" (bind enabled "isValid && dirty") (event "evTTSelfInputEnter"))
 
 	(dispatch evTTSelfInputEsc args="{}" (bind enabled "!isValid") (event "evTTSelfInputEnter"))
 
 
-	(dispatch evTTUpInputCommit dir="EventDirection.UP" args="{value: commitValue}" (bind enabled "isValid && dirty && (!isEmpty || (_isText && _minChars <= 0))") (event "evTTDownCommitPending"))
+	(dispatch evTTSelfInputCommit args="{value: commitValue}" (bind enabled "isValid && dirty && (!isEmpty || (_isText && _minChars <= 0))") (event "evTTDownCommitPending"))
+
+
+	(bindcall externalCall "'' != _writeAction ? 'direct.action' : ''" "[_writeAction, [_writeArg0, $event.value]]" init=false watch=false (event "evTTSelfInputCommit"))
+	(dispatch evTTUpInputCommit dir="EventDirection.UP" args="{value: $event.value}" (bind enabled "'' == _writeAction") (event "evTTSelfInputCommit"))
 
 
 
@@ -936,7 +940,7 @@
 	(dispatch evTTSelfInputRollOut  args="{isOver: false}" on='rollOut')
 
 
-	(dispatch evTTSelfInputFlashEnd args="{}" delay=0.45 reset=true (event "evTTUpInputCommit"))
+	(dispatch evTTSelfInputFlashEnd args="{}" delay=0.45 reset=true (event "evTTSelfInputCommit"))
 
 
 
@@ -1000,7 +1004,7 @@
 
 
 		(bind text "shownValue" watch=false init=false (event "evTTSelfInputSeed"))
-		(bind text "shownCommit" watch=false init=false (event "evTTUpInputCommit"))
+		(bind text "shownCommit" watch=false init=false (event "evTTSelfInputCommit"))
 		(bind text "shownValue" watch=false init=false (event "evTTSelfInputEsc"))
 
 
@@ -1017,10 +1021,386 @@
 		(dispatch evTTSelfInputEsc args="{}" on='focusOut' (bind enabled "!isValid || (isEmpty && !(_isText && _minChars <= 0))"))
 
 
-		(dispatch evTTUpInputCommit dir="EventDirection.UP" args="{value: commitValue}" on='focusOut' (bind enabled "isValid && dirty && (!isEmpty || (_isText && _minChars <= 0)) && keyCode != TT_INPUT_KEY_ESC"))
+		(dispatch evTTSelfInputCommit args="{value: commitValue}" on='focusOut' (bind enabled "isValid && dirty && (!isEmpty || (_isText && _minChars <= 0)) && keyCode != TT_INPUT_KEY_ESC"))
 
 		(dispatch evTTSelfInputTyped args="{}" on='textInput')
 
 		(dispatch evTTSelfInputKeyDown args="{keyCode: $event ? $event.keyCode : 0}" on='keyDown')
+	)
+)
+
+
+
+
+(def element TT_ButtonSettingsSmall (_enabled:bool=true)
+	(scope
+		(macro TT_MOUSE_HANDLER_SCOPE)
+
+		(var isInOverState:bool = "rollOver && !mouseDown")
+		(var isInDownState:bool = "mouseDown")
+	)
+
+	(macro TT_MOUSE_HANDLER
+		_enabled = "_enabled"
+		_soundSet = "'default_button'"
+	)
+
+	(style
+		(width = 24px)
+		(height = 23px)
+		(backgroundImage = "'url:../service_kit/buttons/button_settings_small.png'")
+	)
+
+	(block
+		(alpha = "isInOverState ? 1 : 0")
+		(controller $Animation
+			(bindcall play	duration=0.15	to="{alpha: 1, visible: true}"	(bind enabled "isInOverState"))
+			(bindcall play	duration=0.15	to="{alpha: 0, visible: false}"	(bind enabled "!isInOverState"))
+		)
+
+		(style
+			(hitTest = "false")
+			(position = "absolute")
+			(width = 100%)
+			(height = 100%)
+			(backgroundImage = "'url:../service_kit/buttons/button_settings_small_over.png'")
+		)
+	)
+
+	(block
+		(bind alpha "isInDownState ? 1 : 0")
+		(style
+			(hitTest = "false")
+			(position = "absolute")
+			(width = 100%)
+			(height = 100%)
+			(backgroundImage = "'url:../service_kit/buttons/button_settings_small_down.png'")
+		)
+	)
+)
+
+(def element TT_Switch (_enabled:bool=true, _state:bool=false, _methods:array=[]) layout=true
+	(scope
+		(macro TT_MOUSE_HANDLER_SCOPE)
+
+		(var accountResourceEntity:gfx = "$datahub.getSingleEntity(CC.accountResource)")
+		(var operationsAccountLocked:bool = "accountResourceEntity.accountResource.operationsLocked" (event "accountResourceEntity.accountResource.evOperationsLockChanged"))
+
+		(var isDisabledVisual:bool = "!_enabled || operationsAccountLocked")
+
+		(var isDown:bool = "!isDisabledVisual && mouseDown")
+		(var isRollover:bool = "!isDisabledVisual && rollOver")
+
+		(var ctRollOver:dict = "{ redMultiplier: 1,	greenMultiplier: 1,	blueMultiplier: 1,	alphaMultiplier: 1,
+								  redOffset: 15,	greenOffset: 15,	blueOffset: 15,		alphaOffset: 0 }")
+		(var ctDown:dict = "	{ redMultiplier: 1,	greenMultiplier: 1,	blueMultiplier: 1,	alphaMultiplier: 1,
+								  redOffset: -15,	greenOffset: -15,	blueOffset: -15,	alphaOffset: 0 }")
+	)
+
+	(bind colorTransform "	isRollover && !isDown	? ctRollOver :
+							isRollover && isDown	? ctDown
+													: CT_NONE")
+
+	(hblock
+		(style
+			(bind alpha "_enabled ? 1: 0.7")
+		)
+
+		(block
+			(style
+				(marginBottom = -3px)
+				(marginTop = "-XS")
+			)
+
+			(controller $Instance renderer='SwitchView'
+				(args
+					_state = "_state"
+				)
+			)
+		)
+	)
+
+	(block
+		(class $FullsizeAbsolute)
+		(style
+			(paddingTop = -6px)
+			(paddingBottom = "-XS")
+		)
+
+		(macro TT_MOUSE_HANDLER
+			_enabled = "_enabled && !operationsAccountLocked"
+			_methods = "_methods"
+			_soundSet = "'switch_default'"
+		)
+	)
+)
+
+
+(def element TT_ImageButton (_name:str='', _enabled:bool=true, _width:number=0, _height:number=0, _backgroundImage:str='', _hitAreaMargin:array=[0], _soundSet:str='',
+							_methods:array=[], _tooltipText:str='') layout=true
+	(scope
+		(macro TT_MOUSE_HANDLER_SCOPE)
+
+		(var btnWidth:number = "_width ? _width : 50")
+		(var btnHeight:number = "_height ? _height : 50")
+
+		(var ctRollOver:dict = "{ redMultiplier: 1,	greenMultiplier: 1,	blueMultiplier: 1,	alphaMultiplier: 1,
+								  redOffset: 15,	greenOffset: 15,	blueOffset: 15,		alphaOffset: 0 }")
+		(var ctDown:dict = "	{ redMultiplier: 1,	greenMultiplier: 1,	blueMultiplier: 1,	alphaMultiplier: 1,
+								  redOffset: -15,	greenOffset: -15,	blueOffset: -15,	alphaOffset: 0 }")
+
+		(var isDown:bool = "_enabled && mouseDown")
+		(var isRollover:bool = "_enabled && rollOver")
+	)
+
+	(bind name "_name")
+
+	(style
+		(bind width "btnWidth")
+		(bind height "btnHeight")
+		(bind backgroundImage "_backgroundImage")
+		(backgroundSize = "fill")
+	)
+
+	(bind colorTransform "	isRollover && !isDown	? ctRollOver :
+							isDown					? ctDown
+													: CT_NONE")
+
+	(block
+		(class $FullsizeAbsolute)
+		(style (bind padding "_hitAreaMargin"))
+
+		(macro INPUT "_name")
+
+		(block
+			(class $FullsizeAbsolute)
+			(macro TT_MOUSE_HANDLER
+				_enabled = "_enabled"
+				_methods = "_methods"
+				_soundSet = "_soundSet ? _soundSet : 'button_context'"
+			)
+		)
+
+		(controller $Tooltip
+			(renderer='TT_SimpleStatusTooltip')
+			(bind enabled "_tooltipText")
+			(args
+				_text = "_tooltipText"
+			)
+			(macro DEFAULT_TOOLTIP_BEHAVIOUR "0")
+			(align = "right|innerTop")
+			(offset = { x: 6, y: -26 })
+		)
+	)
+)
+
+
+
+
+(def element TT_SimpleStatusTooltip (_text:str = "''", _unifiedStatus:str = "SC.Ui_styles.UNIFIED_STATUS.DEFAULT") layout=true dispatch_size_change=true
+	(name = "'simpleStatusTooltip'")
+	(style (hitTest = false))
+	(macro TT_TOOLTIP_SYSTEM_DEFAULT_BACKGROUND)
+
+	(element TOOLTIP_SYSTEM_DEFAULT_CONTAINER _width = "'auto'"
+		(element StatusLine
+			_text = "_text"
+			_textClass = '$TextDefaultNM'
+			_leading = -3
+			_unifiedStatus = "_unifiedStatus"
+			_width = "'auto'"
+			_maxWidth = "270"
+		)
+	)
+)
+
+
+(def macro TT_TOOLTIP_SYSTEM_DEFAULT_BACKGROUND (_isInfotip:expression="false")
+	(scope (macro TOOLTIP_SYSTEM_DEFAULT_BACKGROUND_SCOPE))
+
+	(dispatch "'evTTDownBlurStartShow'" dir="EventDirection.DOWN" (event "evStartShow"))
+	(dispatch "'evTTDownBlurStartHide'" dir="EventDirection.DOWN" (event "evStartHide"))
+
+	(block
+		(class $TooltipBackgroundContainer)
+
+		(block
+			(class $FullsizeAbsolute)
+			(block
+				(class $FullsizeAbsolute)
+				(controller $Instance
+					(bind renderer "_isInfotip	? 'TT_InfotipSystemBlur'
+												: 'TT_TooltipSystemBlur'")
+					(bind enabled "!isHighContrast")
+				)
+			)
+
+			(block
+				(bind visible "!isHighContrast")
+				(class $FullsizeAbsolute)
+				(style
+					(bind backgroundImage "_isInfotip	? 'url:../service_kit/panel_backgrounds/infotip_panel.png'
+														: 'url:../service_kit/panel_backgrounds/hint_panel.png'")
+					(scale9grid = 3)
+				)
+			)
+
+			(block
+				(bind visible "isHighContrast")
+				(class $FullsizeAbsolute)
+				(style
+					(backgroundImage = "'url:../service_kit/panel_backgrounds/hint_panel_high_contrast.png'")
+					(scale9grid = 3)
+				)
+			)
+		)
+	)
+)
+
+(def macro TT_BLUR_MAP_SCOPE ()
+	(event evTTDownBlurStartShow)
+	(event evTTDownBlurStartHide)
+
+	(macro GET_PREF 'isBlurOptionEnabled' "'graphics.GUI.blur'")
+)
+
+(def macro TT_BLUR_MAP ()
+	(rendererString = blurMeBaby)
+	(controller $Animation
+		(bindcall play  duration=0.15
+						action="kill"
+						keyframes="[
+							{percent:0,		to:{ blurIntensity:0 }},
+							{percent:30,	to:{ blurIntensity:0.4 }},
+							{percent:50,	to:{ blurIntensity:0.8 }},
+							{percent:80,	to:{ blurIntensity:0.9 }},
+							{percent:100,	to:{ blurIntensity:1 }}
+						]"
+						watch=false
+						(event "evTTDownBlurStartShow")
+		)
+		(bindcall play  duration=0.1
+						action="kill"
+						to = "{ blurIntensity: 0 }"
+						watch=false
+						(event "evTTDownBlurStartHide")
+		)
+	)
+)
+
+(def element TT_DeclareBlurLayer () layout=true
+	(scope
+		(macro TT_BLUR_MAP_SCOPE)
+	)
+	(style (position = "absolute"))
+	(mc transparentPixel
+		(rendererString = blurLayer)
+	)
+)
+
+(def element TT_TooltipSystemBlur () layout=true
+	(scope
+		(macro TT_BLUR_MAP_SCOPE)
+	)
+	(bind visible "isBlurOptionEnabled")
+
+	(class $FullsizeAbsolute)
+	(mouseEnabled = false)
+	(mouseChildren = false)
+	(element TT_DeclareBlurLayer)
+
+	(mc mc_blurmap_medium
+		(class $FullsizeAbsolute)
+		(macro TT_BLUR_MAP)
+	)
+
+	(mc inner_panel
+		(class $FullsizeAbsolute)
+		(alpha = 0.5)
+	)
+)
+
+(def element TT_InfotipSystemBlur () layout=true
+	(scope
+		(macro TT_BLUR_MAP_SCOPE)
+	)
+	(class $FullsizeAbsolute)
+	(element TT_DeclareBlurLayer)
+
+	(mc mc_blurmap_gamemenu
+		(class $FullsizeAbsolute)
+		(macro TT_BLUR_MAP)
+	)
+)
+
+
+(def element TT_InfotipPinTop()
+	(scope (macro TOOLTIP_SYSTEM_DEFAULT_BACKGROUND_SCOPE))
+
+	(style
+		(position = "absolute")
+		(backgroundColor = 0x00000001) 
+	)
+
+	(controller $Instance renderer = 'TT_InfotipPin'
+		(args "!isHighContrast")
+		(exprs
+			(name = 'pinTop')
+			(style
+				(position = "absolute")
+				(top = 0px)
+				(left = -1px)
+			)
+		)
+	)
+)
+
+(def element TT_InfotipPinBottom()
+	(scope (macro TOOLTIP_SYSTEM_DEFAULT_BACKGROUND_SCOPE))
+
+	(style
+		(position = "absolute")
+		(bottom = 0)
+		(backgroundColor = 0x00000001)
+	)
+
+	(controller $Instance renderer = 'TT_InfotipPin'
+		(args "!isHighContrast")
+		(exprs
+			(name = 'pinBottom')
+			(style
+				(position = "absolute")
+				(left = 21px)
+				(bottom = -24px)
+				(rotation = 180)
+			)
+		)
+	)
+)
+
+(def element TT_InfotipPin (_isBlurEnabled:bool) layout=true
+	(style (width = 22px) (height = 12px))
+
+	(block
+		(class $FullsizeAbsolute)
+		(controller $Instance renderer = 'TT_InfotipPinBlurmap'
+			(bind enabled "_isBlurEnabled")
+		)
+	)
+
+	(block
+		(class $FullsizeAbsolute)
+		(bind alpha "_isBlurEnabled ? 1.35 : 1.35")
+		(style (backgroundImage = "'url:../service_kit/panel_backgrounds/infotip_pin_vert.png'"))
+	)
+)
+
+(def element TT_InfotipPinBlurmap () layout=true
+	(scope
+		(macro TT_BLUR_MAP_SCOPE)
+	)
+	(mc mc_blurmap_infotip_arrow_vert
+		(style (position = "absolute") (width = 22px) (height = 12px))
+		(macro TT_BLUR_MAP)
 	)
 )

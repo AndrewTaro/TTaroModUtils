@@ -6,7 +6,7 @@
 	(scope
 		(var key:str = "_node && _node.key ? _node.key : ''")
 		(var defaultValue:bool = "_node.default ? _node.default : false")
-		(macro TT_GET_PREF _varName="'prefData'" _key="key")
+		(macro TT_GET_SINGLE_PREF _varName="'prefData'" _key="key")
 		(var prefValue:bool = "null != prefData && null != prefData.value ? prefData.value : defaultValue")
 		(var isModified:bool = "prefValue != defaultValue")
 		(var saveMethods:array  = "[{type: 'direct.action', name: 'mod.setPref',   args: [key, !prefValue]}]")
@@ -27,12 +27,12 @@
 				(align = "middle|center")
 				(marginRight = "TT_CONFIG_OPTION_VALUE_WIDTH + TT_CONFIG_OPTION_VALUE_MARGIN")
 			)
-			(element SwitchWithoutLabel
+			(element TT_Switch
 				_state = "prefValue"
 				_methods = "saveMethods"
 			)
 		)
-		(controller $Instance renderer='ImageButton'
+		(controller $Instance renderer='TT_ImageButton'
 			(bind enabled "isModified")
 			(args
 				_width = "TT_CONFIG_RESET_BUTTON_SIZE"
@@ -47,45 +47,30 @@
 
 (def element TT_SliderOptionElement (_node:gfx) layout=true
 	(scope
-		(event evTTUpSliderValueChanged)
-		(event evTTUpValueReset)
-		(event evShow)
-		(event evTTUpInputCommit)
 		(var key:str = "_node && _node.key ? _node.key : ''")
 		(var minValue:number = "_node.min ? _node.min : 0")
 		(var maxValue:number = "null != _node.max ? _node.max : 10")
 		(var minLabel:str = "_node.minLabel ? _node.minLabel : ''")
 		(var maxLabel:str = "_node.maxLabel ? _node.maxLabel : ''")
 		(var step:number = "null != _node.step ? _node.step : 1")
-		(var steps:number = "round((maxValue - minValue) / step)")
 		(var default:number = "_node.default ? _node.default : 0")
-		(var defaultSliderValue:number = "round((default - minValue) / step)")
 		(var rounding:number = "null != _node.decimals ? _node.decimals : 2")
-		(macro TT_GET_PREF _varName="'prefData'" _key="key")
-
+		(macro TT_GET_SINGLE_PREF _varName="'prefData'" _key="key")
 		(var prefValue:number = "null != prefData && null != prefData.value ? prefData.value : default")
-		(var sliderValue:number = "round((prefValue - minValue) / step)" watch=false (event "evShow"))
-		(bind sliderValue "$event.value" watch=false init=false (event "evTTUpValueReset")(event "evTTUpSliderValueChanged"))
 
-		(bind sliderValue "round(($event.value - minValue) / step)" watch=false init=false (event "evTTUpInputCommit"))
-		(var isMinLabelAvailable:bool = "sliderValue == 0 && minLabel")
-		(var isMaxLabelAvailable:bool = "sliderValue == steps && maxLabel")
-		(var isModified:bool = "sliderValue != defaultSliderValue")
+		(var prefIndex:number = "round((prefValue - minValue) / step)")
+		(var isMinLabelAvailable:bool = "prefIndex == 0 && minLabel")
+		(var isMaxLabelAvailable:bool = "prefIndex == round((maxValue - minValue) / step) && maxLabel")
+		(var isModified:bool = "prefIndex != round((default - minValue) / step)")
+		(var resetMethods:array = "[{type: 'direct.action', name: 'mod.resetPref', args: [key]}]")
 
-
-		(var realValue:number = "minValue + sliderValue * step")
 		(var maxChars:number = "(maxValue >= 10000 ? 5 : maxValue >= 1000 ? 4 : maxValue >= 100 ? 3 : maxValue >= 10 ? 2 : 1)
 								+ (rounding > 0 ? rounding + 1 : 0)
 								+ (minValue < 0 ? 1 : 0)")
 	)
-	(dispatch evShow args="{}" on='addedToStage')
-
-
-	(bindcall externalCall 'direct.action' "['mod.setPref', [key, minValue + $event.value * step]]" init=false watch=false (event "evTTUpSliderValueChanged")(event "evTTUpValueReset"))
-
-	(bindcall externalCall 'direct.action' "['mod.setPref', [key, $event.value]]" init=false watch=false (event "evTTUpInputCommit"))
 
 	(style (width = "100%"))
+
 
 	(hblock
 		(style
@@ -97,11 +82,16 @@
 			(style
 				(align = "middle|center")
 			)
-			(element DefaultSlider
-				_value = "sliderValue"
-				_intervalsCount = "steps"
-				_unitsInStepInterval = "step"
+			(element TT_Slider
+				_value = "prefValue"
+				_min = "minValue"
+				_max = "maxValue"
+				_singleStep = "step"
+				_decimals = "rounding"
 				_width = "TT_CONFIG_OPTION_CONTROL_WIDTH"
+				_track = "'TT_SliderTrackFill'"
+				_writeAction = "'mod.setPref'"
+				_writeArg0 = "key"
 			)
 			(block
 				(style
@@ -110,7 +100,7 @@
 					(align = "middle|center")
 				)
 				(element TT_TextInputElement
-					_value = "realValue"
+					_value = "prefValue"
 					_min = "minValue"
 					_max = "maxValue"
 					_step = "step"
@@ -123,19 +113,20 @@
 					_maxLabel = "maxLabel"
 					_atMin = "isMinLabelAvailable"
 					_atMax = "isMaxLabelAvailable"
+					_writeAction = "'mod.setPref'"
+					_writeArg0 = "key"
 				)
 			)
 		)
 		(block
 			(bind visible "isModified")
-			(controller $Instance renderer='ImageButton'
+			(controller $Instance renderer='TT_ImageButton'
 				(args
 					_width = "TT_CONFIG_RESET_BUTTON_SIZE"
 					_height = "TT_CONFIG_RESET_BUTTON_SIZE"
 					_backgroundImage = 'url:../service_kit/buttons/context/update.png'
 					_tooltipText = "'IDS_PREFERENCES_CONTEXT_PREF_RESET'"
-					_dispatchedEv = "'evTTUpValueReset'"
-					_dispatchParams = "{'value': defaultSliderValue}"
+					_methods = "resetMethods"
 				)
 			)
 		)
@@ -144,9 +135,6 @@
 
 (def element TT_NumericInputOptionElement (_node:gfx) layout=true
 	(scope
-		(event evTTUpInputCommit)
-		(event evTTUpValueReset)
-		(event evShow)
 		(var key:str = "_node && _node.key ? _node.key : ''")
 		(var minValue:number = "_node.min ? _node.min : 0")
 		(var maxValue:number = "null != _node.max ? _node.max : 10")
@@ -157,18 +145,11 @@
 		(var maxChars:number = "(maxValue >= 10000 ? 5 : maxValue >= 1000 ? 4 : maxValue >= 100 ? 3 : maxValue >= 10 ? 2 : 1)
 								+ (decimals > 0 ? decimals + 1 : 0)
 								+ (minValue < 0 ? 1 : 0)")
-		(macro TT_GET_PREF _varName="'prefData'" _key="key")
-		(var prefValue:number = "null != prefData && null != prefData.value ? prefData.value : default" watch=false (event "evShow"))
-		(bind prefValue "$event.value" watch=false init=false (event "evTTUpInputCommit"))
-		(bind prefValue "default" watch=false init=false (event "evTTUpValueReset"))
+		(macro TT_GET_SINGLE_PREF _varName="'prefData'" _key="key")
+		(var prefValue:number = "null != prefData && null != prefData.value ? prefData.value : default")
 		(var isModified:bool = "prefValue != default")
-
-
-		(var writeValue:number = "prefValue")
+		(var resetMethods:array = "[{type: 'direct.action', name: 'mod.resetPref', args: [key]}]")
 	)
-	(dispatch evShow args="{}" on='addedToStage')
-
-	(bindcall externalCall 'direct.action' "['mod.setPref', [key, writeValue]]" init=false)
 
 	(style (width = "100%"))
 
@@ -191,6 +172,8 @@
 				_maxChars = "maxChars"
 
 				_fillWidth = "true"
+				_writeAction = "'mod.setPref'"
+				_writeArg0 = "key"
 			)
 		)
 		(block
@@ -201,14 +184,13 @@
 		)
 		(block
 			(bind visible "isModified")
-			(controller $Instance renderer='ImageButton'
+			(controller $Instance renderer='TT_ImageButton'
 				(args
 					_width = "TT_CONFIG_RESET_BUTTON_SIZE"
 					_height = "TT_CONFIG_RESET_BUTTON_SIZE"
 					_backgroundImage = 'url:../service_kit/buttons/context/update.png'
 					_tooltipText = "'IDS_PREFERENCES_CONTEXT_PREF_RESET'"
-					_dispatchedEv = "'evTTUpValueReset'"
-					_dispatchParams = "{'value': default}"
+					_methods = "resetMethods"
 				)
 			)
 		)
@@ -218,25 +200,15 @@
 
 (def element TT_TextOptionElement (_node:gfx) layout=true
 	(scope
-		(event evTTUpInputCommit)
-		(event evTTUpValueReset)
-		(event evShow)
 		(var key:str = "_node && _node.key ? _node.key : ''")
 		(var default:str = "null != _node.default ? _node.default : ''")
 		(var maxChars:number = "null != _node.maxLength ? _node.maxLength : 64")
 		(var minChars:number = "null != _node.minLength ? _node.minLength : 0")
-		(macro TT_GET_PREF _varName="'prefData'" _key="key")
-		(var prefValue:str = "null != prefData && null != prefData.value ? prefData.value : default" watch=false (event "evShow"))
-		(bind prefValue "$event.value" watch=false init=false (event "evTTUpInputCommit"))
-		(bind prefValue "default" watch=false init=false (event "evTTUpValueReset"))
+		(macro TT_GET_SINGLE_PREF _varName="'prefData'" _key="key")
+		(var prefValue:str = "null != prefData && null != prefData.value ? prefData.value : default")
 		(var isModified:bool = "prefValue != default")
-
-
-		(var writeValue:str = "prefValue")
+		(var resetMethods:array = "[{type: 'direct.action', name: 'mod.resetPref', args: [key]}]")
 	)
-	(dispatch evShow args="{}" on='addedToStage')
-
-	(bindcall externalCall 'direct.action' "['mod.setPref', [key, writeValue]]" init=false)
 
 	(style (width = "100%"))
 
@@ -256,6 +228,8 @@
 				_maxChars = "maxChars"
 				_minChars = "minChars"
 				_fillWidth = "true"
+				_writeAction = "'mod.setPref'"
+				_writeArg0 = "key"
 			)
 		)
 		(block
@@ -266,14 +240,13 @@
 		)
 		(block
 			(bind visible "isModified")
-			(controller $Instance renderer='ImageButton'
+			(controller $Instance renderer='TT_ImageButton'
 				(args
 					_width = "TT_CONFIG_RESET_BUTTON_SIZE"
 					_height = "TT_CONFIG_RESET_BUTTON_SIZE"
 					_backgroundImage = 'url:../service_kit/buttons/context/update.png'
 					_tooltipText = "'IDS_PREFERENCES_CONTEXT_PREF_RESET'"
-					_dispatchedEv = "'evTTUpValueReset'"
-					_dispatchParams = "{'value': default}"
+					_methods = "resetMethods"
 				)
 			)
 		)
@@ -287,7 +260,7 @@
 		(var key:str = "_node && _node.key ? _node.key : ''")
 		(var options:array = "_node.options ? _node.options : []")
 		(var default:gfx = "_node.default ? _node.default : 0")
-		(macro TT_GET_PREF _varName="'prefData'" _key="key")
+		(macro TT_GET_SINGLE_PREF _varName="'prefData'" _key="key")
 		(var prefValue:gfx = "null != prefData && null != prefData.value ? prefData.value : default")
 
 		(var isModified:bool = "prefValue != default")
@@ -323,7 +296,7 @@
 			)
 		)
 
-		(controller $Instance renderer='ImageButton'
+		(controller $Instance renderer='TT_ImageButton'
 			(bind enabled "isModified")
 			(args
 				_width = "TT_CONFIG_RESET_BUTTON_SIZE"
@@ -342,7 +315,7 @@
 		(event evTTSelfAddedToStage)
 		(event evTTUpMenuClosed)
 
-		(macro MOUSE_HANDLER_SCOPE)
+		(macro TT_MOUSE_HANDLER_SCOPE)
 		(var optValue:gfx = "null != _itemText[_valueKey] ? _itemText[_valueKey] : $index")
 		(var isSelected:bool = "optValue == _selValue")
 		(var phrase:str = "_itemText && _itemText.phrase ? _itemText.phrase : ''")
@@ -399,7 +372,7 @@
 	(dispatch evTTSelfAddedToStage dir="EventDirection.NONE" on=addedToStage)
 	(dispatch "'evTTUpItemChooserInner'" args="{ value: optValue }" dir="EventDirection.UP" on='click' (bind enabled "!_isInactive"))
 
-	(macro MOUSE_HANDLER
+	(macro TT_MOUSE_HANDLER
 		_enabled = "!_isInactive"
 		_soundSet = "'button_default'"
 	)
@@ -440,7 +413,7 @@
 		(event evTTSelfAddedToStage)
 		(event evTTUpMenuClosed)
 
-		(macro MOUSE_HANDLER_SCOPE)
+		(macro TT_MOUSE_HANDLER_SCOPE)
 		(var optValue:gfx = "null != _itemText[_valueKey] ? _itemText[_valueKey] : $index")
 		(var isSelected:bool = "optValue == _selValue")
 
@@ -498,7 +471,7 @@
 	(dispatch evTTSelfAddedToStage dir="EventDirection.NONE" on=addedToStage)
 	(dispatch "'evTTUpItemChooserInner'" args="{ value: optValue }" dir="EventDirection.UP" on='click' (bind enabled "!_isInactive"))
 
-	(macro MOUSE_HANDLER
+	(macro TT_MOUSE_HANDLER
 		_enabled = "!_isInactive"
 		_soundSet = "'button_default'"
 	)
@@ -574,10 +547,10 @@
 
 (def element TT_ColorOptionElement (_node:gfx) layout=true
 	(scope
-		(macro MOUSE_HANDLER_SCOPE)
+		(macro TT_MOUSE_HANDLER_SCOPE)
 		(var key:str = "_node && _node.key ? _node.key : ''")
 		(var default:number = "_node.default ? _node.default : 0")
-		(macro TT_GET_PREF _varName="'prefData'" _key="key")
+		(macro TT_GET_SINGLE_PREF _varName="'prefData'" _key="key")
 		(var packed:number = "null != prefData && null != prefData.value ? prefData.value : default")
 		(var hexText:str = "null != prefData && null != prefData.hex ? prefData.hex : '#00000000'")
 		(var isModified:bool = "packed != default")
@@ -657,18 +630,18 @@
 				)
 			)
 
-			(macro MOUSE_HANDLER _soundSet = "'dropdown'")
+			(macro TT_MOUSE_HANDLER _soundSet = "'dropdown'")
 
 			(controller $Tooltip
 				(renderer = 'TT_ColorPickerElement')
-				(args _key = "key" _data = "prefData")
+				(args _key = "key")
 
 				(macro TT_POPUP_BEHAVIOUR)
 
 							)
 		)
 
-		(controller $Instance renderer='ImageButton'
+		(controller $Instance renderer='TT_ImageButton'
 			(bind enabled "isModified")
 			(args
 				_width = "TT_CONFIG_RESET_BUTTON_SIZE"
@@ -681,7 +654,7 @@
 	)
 )
 
-(def element TT_ColorPickerElement (_key:str, _data:gfx={}) layout=true
+(def element TT_ColorPickerElement (_key:str) layout=true
 	(scope
 		(event evTTUpChannelChanged)
 		(event evTTUpPickerModeChanged)
@@ -689,61 +662,56 @@
 		(event evTTDownTrackCtx)
 
 
-		(var canHsv:bool = "'hsv' == (_data.pickerMode ? _data.pickerMode : 'rgb')")
-		(var mode:str = "canHsv ? 'hsv' : 'argb'")
+		(macro TT_GET_SINGLE_PREF _varName="'prefData'" _key="_key")
+		(var d:gfx = "null != prefData ? prefData : {}")
+
+
+		(var canHsv:bool = "'hsv' == (d.pickerMode ? d.pickerMode : 'rgb')")
+
+		(var mode:str = "canHsv ? 'hsv' : 'argb'" watch=false)
 		(bind mode "$event.mode" watch=false init=false (event "evTTUpPickerModeChanged"))
 
-		(var aEditable:bool = "null != _data.aEditable ? _data.aEditable : true")
-		(var rEditable:bool = "null != _data.rEditable ? _data.rEditable : true")
-		(var gEditable:bool = "null != _data.gEditable ? _data.gEditable : true")
-		(var bEditable:bool = "null != _data.bEditable ? _data.bEditable : true")
+		(var aEditable:bool = "null != d.aEditable ? d.aEditable : true")
+		(var rEditable:bool = "null != d.rEditable ? d.rEditable : true")
+		(var gEditable:bool = "null != d.gEditable ? d.gEditable : true")
+		(var bEditable:bool = "null != d.bEditable ? d.bEditable : true")
 
-		(var aMin:number = "_data.aMin ? _data.aMin : 0") (var aMax:number = "null != _data.aMax ? _data.aMax : 255")
-		(var rMin:number = "_data.rMin ? _data.rMin : 0") (var rMax:number = "null != _data.rMax ? _data.rMax : 255")
-		(var gMin:number = "_data.gMin ? _data.gMin : 0") (var gMax:number = "null != _data.gMax ? _data.gMax : 255")
-		(var bMin:number = "_data.bMin ? _data.bMin : 0") (var bMax:number = "null != _data.bMax ? _data.bMax : 255")
-
-		(var a:number = "null != _data.a255 ? _data.a255 : 255")
-		(var r:number = "null != _data.r255 ? _data.r255 : 255")
-		(var g:number = "null != _data.g255 ? _data.g255 : 255")
-		(var b:number = "null != _data.b255 ? _data.b255 : 255")
-
-		(bind a "true == $event.armed && $event.channel == 'a' ? $event.value : a" watch=false init=false (event "evTTUpChannelChanged"))
-		(bind r "true == $event.armed && $event.channel == 'r' ? $event.value : r" watch=false init=false (event "evTTUpChannelChanged"))
-		(bind g "true == $event.armed && $event.channel == 'g' ? $event.value : g" watch=false init=false (event "evTTUpChannelChanged"))
-		(bind b "true == $event.armed && $event.channel == 'b' ? $event.value : b" watch=false init=false (event "evTTUpChannelChanged"))
+		(var aMin:number = "d.aMin ? d.aMin : 0") (var aMax:number = "null != d.aMax ? d.aMax : 255")
+		(var rMin:number = "d.rMin ? d.rMin : 0") (var rMax:number = "null != d.rMax ? d.rMax : 255")
+		(var gMin:number = "d.gMin ? d.gMin : 0") (var gMax:number = "null != d.gMax ? d.gMax : 255")
+		(var bMin:number = "d.bMin ? d.bMin : 0") (var bMax:number = "null != d.bMax ? d.bMax : 255")
 
 
-		(var cmax:number = "max(r, max(g, b))")
-		(var cmin:number = "min(r, min(g, b))")
-		(var chroma:number = "cmax - cmin")
+		(var a:number = "null != d.a255 ? d.a255 : 255")
+		(var r:number = "null != d.r255 ? d.r255 : 255")
+		(var g:number = "null != d.g255 ? d.g255 : 255")
+		(var b:number = "null != d.b255 ? d.b255 : 255")
+
+		(var h:number = "null != d.h ? d.h : 0")
+		(var s:number = "null != d.s ? d.s : 0")
+		(var v:number = "null != d.v ? d.v : 0")
 
 
-		(var h:number = "null != _data.h ? _data.h : (chroma == 0 ? 0 : ((((60 * (cmax == r ? (g - b) / chroma : cmax == g ? (b - r) / chroma + 2 : (r - g) / chroma + 4)) % 360) + 360) % 360))" watch=false)
-		(var s:number = "null != _data.s ? _data.s : (cmax == 0 ? 0 : 100 * chroma / cmax)" watch=false)
-		(var v:number = "null != _data.v ? _data.v : 100 * cmax / 255" watch=false)
-
-
-		(bind h "true != $event.armed ? h : $event.channel == 'h' ? (true == $event.typed || $event.value != round(h) ? $event.value : h) : ('r' == $event.channel || 'g' == $event.channel || 'b' == $event.channel) ? (chroma == 0 ? h : ((((60 * (cmax == r ? (g - b) / chroma : cmax == g ? (b - r) / chroma + 2 : (r - g) / chroma + 4)) % 360) + 360) % 360)) : h" watch=false init=false (event "evTTUpChannelChanged"))
-		(bind s "true != $event.armed ? s : $event.channel == 's' ? (true == $event.typed || $event.value != round(s) ? $event.value : s) : ('r' == $event.channel || 'g' == $event.channel || 'b' == $event.channel) ? (cmax == 0 ? s : 100 * chroma / cmax) : s" watch=false init=false (event "evTTUpChannelChanged"))
-		(bind v "true != $event.armed ? v : $event.channel == 'v' ? (true == $event.typed || $event.value != round(v) ? $event.value : v) : ('r' == $event.channel || 'g' == $event.channel || 'b' == $event.channel) ? (100 * cmax / 255) : v" watch=false init=false (event "evTTUpChannelChanged"))
-
-
-		(var hueColor:number = "TT_HUE_CTX_COLORS[min(71, floor((((h % 360) + 360) % 360) / 5))]")
-		(var satOverlayAlpha:number = "1 - v / 100")
-		(var valOverlayAlpha:number = "1 - s / 100")
-
-
+		(var hueColor:number = "null != d.hueColor ? d.hueColor : 0xFFFF0000")
+		(var satOverlayAlpha:number = "null != d.satOverlayAlpha ? d.satOverlayAlpha : 0")
+		(var valOverlayAlpha:number = "null != d.valOverlayAlpha ? d.valOverlayAlpha : 0")
 	)
 
 
-	(bindcall externalCall "true == $event.armed && ('h' == $event.channel || 's' == $event.channel || 'v' == $event.channel) ? 'direct.action' : ''" "['mod.setPrefHsv', [_key, h, s, v, a]]" init=false watch=false (event "evTTUpChannelChanged"))
-	(bindcall externalCall "true == $event.armed && ('a' == $event.channel || 'r' == $event.channel || 'g' == $event.channel || 'b' == $event.channel) ? 'direct.action' : ''" "['mod.setPrefRgb', [_key, r, g, b, a]]" init=false watch=false (event "evTTUpChannelChanged"))
+	(bindcall externalCall "true == $event.armed ? 'direct.action' : ''" "['mod.setColorChannel', [_key, $event.channel, $event.value, true == $event.typed]]" init=false watch=false (event "evTTUpChannelChanged"))
 
 
-	(dispatch evTTDownTrackCtx dir="EventDirection.DOWN" args="{ctxColor: hueColor, ctxSatAlpha: satOverlayAlpha, ctxValAlpha: valOverlayAlpha}" (event "evTTUpChannelChanged") (event "evTTUpPickerModeChanged"))
+	(bindcall externalCall 'direct.action' "['mod.openColorPicker', [_key]]" init=false watch=false on='addedToStage')
+	(bindcall externalCall 'direct.action' "['mod.closeColorPicker', [_key]]" init=false watch=false on='removedFromStage')
 
-	(macro TOOLTIP_SYSTEM_DEFAULT_BACKGROUND)
+	(dispatch evTTDownSliderShow dir="EventDirection.DOWN" args="{}" on='addedToStage')
+
+
+	(dispatch evTTDownTrackCtx dir="EventDirection.DOWN" args="{ctxColor: hueColor, ctxSatAlpha: satOverlayAlpha, ctxValAlpha: valOverlayAlpha}" (bind trigger "hueColor") (event "evTTUpPickerModeChanged"))
+	(dispatch evTTDownTrackCtx dir="EventDirection.DOWN" args="{ctxColor: hueColor, ctxSatAlpha: satOverlayAlpha, ctxValAlpha: valOverlayAlpha}" (bind trigger "satOverlayAlpha"))
+	(dispatch evTTDownTrackCtx dir="EventDirection.DOWN" args="{ctxColor: hueColor, ctxSatAlpha: satOverlayAlpha, ctxValAlpha: valOverlayAlpha}" (bind trigger "valOverlayAlpha"))
+
+	(macro TT_TOOLTIP_SYSTEM_DEFAULT_BACKGROUND)
 
 
 	(block
@@ -770,24 +738,24 @@
 		)
 
 
-		(element TT_ColorChannelSlider _label="'A'" _channel="'a'" _value="a" _min="aMin" _max="aMax" _enabled="aEditable" _track="'TT_ChannelSliderTrackAlpha'")
+		(element TT_ColorChannelSlider _label="'A'" _channel="'a'" _value="a" _min="aMin" _max="aMax" _enabled="aEditable" _track="'TT_SliderTrackAlpha'")
 
 
 		(block
 			(bind visible "mode == 'argb' || !canHsv")
 			(style (width = 100%))
-			(element TT_ColorChannelSlider _label="'R'" _channel="'r'" _value="r" _min="rMin" _max="rMax" _enabled="rEditable" _track="'TT_ChannelSliderTrackRed'")
-			(element TT_ColorChannelSlider _label="'G'" _channel="'g'" _value="g" _min="gMin" _max="gMax" _enabled="gEditable" _track="'TT_ChannelSliderTrackGreen'")
-			(element TT_ColorChannelSlider _label="'B'" _channel="'b'" _value="b" _min="bMin" _max="bMax" _enabled="bEditable" _track="'TT_ChannelSliderTrackBlue'")
+			(element TT_ColorChannelSlider _label="'R'" _channel="'r'" _value="r" _min="rMin" _max="rMax" _enabled="rEditable" _track="'TT_SliderTrackRed'")
+			(element TT_ColorChannelSlider _label="'G'" _channel="'g'" _value="g" _min="gMin" _max="gMax" _enabled="gEditable" _track="'TT_SliderTrackGreen'")
+			(element TT_ColorChannelSlider _label="'B'" _channel="'b'" _value="b" _min="bMin" _max="bMax" _enabled="bEditable" _track="'TT_SliderTrackBlue'")
 		)
 
 
 		(block
 			(bind visible "canHsv && mode == 'hsv'")
 			(style (width = 100%))
-			(element TT_ColorChannelSlider _label="'H'" _channel="'h'" _value="h" _min="0" _max="360" _track="'TT_ChannelSliderTrackHue'")
-			(element TT_ColorChannelSlider _label="'S'" _channel="'s'" _value="s" _min="0" _max="100" _track="'TT_ChannelSliderTrackSatDyn'" _ctxColor="hueColor" _ctxSatAlpha="satOverlayAlpha" _ctxValAlpha="valOverlayAlpha")
-			(element TT_ColorChannelSlider _label="'V'" _channel="'v'" _value="v" _min="0" _max="100" _track="'TT_ChannelSliderTrackValDyn'" _ctxColor="hueColor" _ctxSatAlpha="satOverlayAlpha" _ctxValAlpha="valOverlayAlpha")
+			(element TT_ColorChannelSlider _label="'H'" _channel="'h'" _value="h" _min="0" _max="360" _track="'TT_SliderTrackHue'")
+			(element TT_ColorChannelSlider _label="'S'" _channel="'s'" _value="s" _min="0" _max="100" _track="'TT_SliderTrackSatDyn'" _ctxColor="hueColor" _ctxSatAlpha="satOverlayAlpha" _ctxValAlpha="valOverlayAlpha")
+			(element TT_ColorChannelSlider _label="'V'" _channel="'v'" _value="v" _min="0" _max="100" _track="'TT_SliderTrackValDyn'" _ctxColor="hueColor" _ctxSatAlpha="satOverlayAlpha" _ctxValAlpha="valOverlayAlpha")
 		)
 	)
 )
@@ -795,7 +763,7 @@
 
 (def element TT_PickerModeTab (_label:str='', _mode:str='', _isSelected:bool=false, _width:number=70) layout=true
 	(scope
-		(macro MOUSE_HANDLER_SCOPE)
+		(macro TT_MOUSE_HANDLER_SCOPE)
 		(event evTTUpPickerModeChanged)
 
 		(var state:number = "_isSelected ? SC.Ui_styles.BUTTON_STATE.SELECTED : mouseDown ? SC.Ui_styles.BUTTON_STATE.DOWN : rollOver ? SC.Ui_styles.BUTTON_STATE.OVER : SC.Ui_styles.BUTTON_STATE.UP")
@@ -831,7 +799,7 @@
 		(macro DEFAULT_CONTROL_STATE_ANIMATION_ALPHA _trigger="state" _alpha="lineAlpha")
 	)
 
-	(macro MOUSE_HANDLER
+	(macro TT_MOUSE_HANDLER
 		_enabled = "!_isSelected"
 		_dispatchedEv = "'evTTUpPickerModeChanged'"
 		_dispatchParams = "{mode: _mode}"
@@ -842,7 +810,7 @@
 
 (def element TT_StepperButton (_glyph:str='', _dir:number=0, _enabled:bool=true, _size:number=18) layout=true
 	(scope
-		(macro MOUSE_HANDLER_SCOPE)
+		(macro TT_MOUSE_HANDLER_SCOPE)
 
 		(var isDown:bool = "_enabled && mouseDown")
 		(var isRollover:bool = "_enabled && rollOver")
@@ -880,7 +848,7 @@
 		(style (align = "center|middle") (hitTest = false))
 		(bind text "_glyph")
 	)
-	(macro MOUSE_HANDLER
+	(macro TT_MOUSE_HANDLER
 		_enabled = "_enabled"
 		_dispatchedEv = "'evTTUpStep'"
 		_dispatchParams = "{dir: _dir}"
@@ -889,7 +857,7 @@
 )
 
 
-(def element TT_ColorChannelSlider (_label:str, _channel:str, _value:number, _min:number=0, _max:number=255, _enabled:bool=true, _track:str='TT_ChannelSliderTrackNeutral', _ctxColor:number=0xFFFFFFFF, _ctxSatAlpha:number=0, _ctxValAlpha:number=0) layout=true
+(def element TT_ColorChannelSlider (_label:str, _channel:str, _value:number, _min:number=0, _max:number=255, _enabled:bool=true, _track:str='TT_SliderTrackNeutral', _ctxColor:number=0xFFFFFFFF, _ctxSatAlpha:number=0, _ctxValAlpha:number=0) layout=true
 	(scope
 		(event evTTUpSliderValueChanged)
 		(event evTTUpChannelChanged)
@@ -938,7 +906,7 @@
 	(hblock
 		(style (width = 100%) (align = "left|middle"))
 		(tf (class $TextDefault) (bind text "_label") (style (width = 16px)))
-		(element TT_ChannelSlider
+		(element TT_Slider
 			_value = "_value"
 			_min = "_min"
 			_max = "_max"
@@ -996,7 +964,9 @@
 )
 
 
-(def element TT_ChannelSlider (_value:number, _min:number=0, _max:number=255, _singleStep:number=1, _width:number=160, _track:str='TT_ChannelSliderTrackNeutral', _ctxColor:number=0xFFFFFFFF, _ctxSatAlpha:number=0, _ctxValAlpha:number=0) layout=true
+
+
+(def element TT_Slider (_value:number, _min:number=0, _max:number=255, _singleStep:number=1, _decimals:number=0, _width:number=160, _track:str='TT_SliderTrackNeutral', _writeAction:str='', _writeArg0:gfx='', _ctxColor:number=0xFFFFFFFF, _ctxSatAlpha:number=0, _ctxValAlpha:number=0) layout=true
 	(scope
 		(event evTTUpSliderValueChanged)
 		(event evTTDownSliderValueChangedForTrack)
@@ -1006,6 +976,7 @@
 
 		(event evTTDownSliderReseed)
 		(event evTTDownTrackCtx)
+		(event evTTSelfSliderFollow)
 
 		(event evTTSelfRollOver)
 		(event evTTSelfRollOut)
@@ -1015,16 +986,33 @@
 
 		(event evTTUpSliderThumbDown)
 
-		(event evTTSelfChannelSliderChangedInternal)
-		(var curValue:number = "$event ? $event.newValue : _value" (event "evTTSelfChannelSliderChangedInternal"))
+		(var steps:number = "max(1, round((_max - _min) / _singleStep))")
+		(var targetIndex:number = "round((_value - _min) / _singleStep)")
+
+		(event evTTSelfSliderChangedInternal)
+
+		(var curIndex:number = "targetIndex" watch=false)
+		(bind curIndex "$event.newValue" watch=false init=false (event "evTTSelfSliderChangedInternal"))
+
+		(var decimalScale:number = "pow(10, _decimals)")
+		(var writeValue:number = "round((_min + round(curIndex) * _singleStep) * decimalScale) / decimalScale")
 
 		(var rollOver:bool = "$event.isOver" init=false watch=false (event "evTTSelfRollOver") (event "evTTSelfRollOut"))
 		(var isMouseDown:bool = "$event.isDown" init=false watch=false (event "evTTSelfMouseDown") (event "evTTUpSliderThumbDown") (event "evTTSelfStageMouseUp"))
 
 
+
+
 		(var armed:bool = false)
 		(bind armed "false" watch=false init=false (event "evTTDownSliderShow") (event "evTTSelfSliderShow") (event "evTTDownSliderReseed"))
-		(bind armed "true" watch=false init=false (event "evTTSelfRollOver") (event "evTTSelfMouseDown") (event "evTTUpSliderThumbDown"))
+		(bind armed "true" watch=false init=false (event "evTTSelfMouseDown") (event "evTTUpSliderThumbDown"))
+		(bind armed "false" watch=false init=false (event "evTTSelfStageMouseUp"))
+		(event evTTSelfSliderRebind)
+		(var rebindKey:gfx = "_writeArg0" (dispatch evTTSelfSliderRebind on='evChanged'))
+		(var rebindMin:number = "_min" (dispatch evTTSelfSliderRebind on='evChanged'))
+		(var rebindMax:number = "_max" (dispatch evTTSelfSliderRebind on='evChanged'))
+		(var rebindStep:number = "_singleStep" (dispatch evTTSelfSliderRebind on='evChanged'))
+		(bind armed "false" watch=false init=false (event "evTTSelfSliderRebind"))
 
 
 		(var ctxColor:number = "_ctxColor" watch=false)
@@ -1052,27 +1040,38 @@
 	(dispatch evTTSelfSliderShow args="{}" on='addedToStage')
 
 
-	(dispatch evTTUpSliderValueChanged args="{value: curValue, armed: armed}" dir="EventDirection.UP" (event "evTTSelfChannelSliderChangedInternal"))
+	(dispatch evTTUpSliderValueChanged args="{value: _min + curIndex * _singleStep, armed: armed}" dir="EventDirection.UP" (bind enabled "'' == _writeAction") (event "evTTSelfSliderChangedInternal"))
 
 
-	(dispatch evTTDownSliderValueChangedForTrack args="{value: curValue - _min, intervalsCount: max(1, _max - _min), ctxColor: ctxColor, ctxSatAlpha: ctxSatAlpha, ctxValAlpha: ctxValAlpha}" dir="EventDirection.DOWN" (event "evTTUpSliderValueChanged"))
-	(dispatch evTTDownSliderValueChangedForTrack args="{value: curValue - _min, intervalsCount: max(1, _max - _min), ctxColor: ctxColor, ctxSatAlpha: ctxSatAlpha, ctxValAlpha: ctxValAlpha}" dir="EventDirection.DOWN" (event "evTTDownSliderShow") (event "evTTSelfSliderShow") (event "evTTDownSliderReseed"))
-	(dispatch evTTDownSliderValueChangedForTrack args="{value: curValue - _min, intervalsCount: max(1, _max - _min), ctxColor: ctxColor, ctxSatAlpha: ctxSatAlpha, ctxValAlpha: ctxValAlpha}" dir="EventDirection.DOWN" (event "evTTDownTrackCtx"))
+	(bindcall externalCall "'' != _writeAction && armed && round(curIndex) != targetIndex ? 'direct.action' : ''" "[_writeAction, [_writeArg0, writeValue]]" init=false watch=false (event "evTTSelfSliderChangedInternal"))
+
+
+
+
+
+	(dispatch evTTSelfSliderFollow args="{}" delay=0.05 reset=true (bind enabled "'' != _writeAction && !armed && round(curIndex) != targetIndex") (bind trigger "targetIndex"))
+	(dispatch evTTSelfSliderFollow args="{}" (bind enabled "'' != _writeAction && round(curIndex) != targetIndex") (event "evTTSelfStageMouseUp"))
+
+
+	(dispatch evTTDownSliderValueChangedForTrack args="{value: curIndex, intervalsCount: steps, ctxColor: ctxColor, ctxSatAlpha: ctxSatAlpha, ctxValAlpha: ctxValAlpha}" dir="EventDirection.DOWN" (event "evTTSelfSliderChangedInternal"))
+	(dispatch evTTDownSliderValueChangedForTrack args="{value: curIndex, intervalsCount: steps, ctxColor: ctxColor, ctxSatAlpha: ctxSatAlpha, ctxValAlpha: ctxValAlpha}" dir="EventDirection.DOWN" (event "evTTDownSliderShow") (event "evTTSelfSliderShow") (event "evTTDownSliderReseed"))
+	(dispatch evTTDownSliderValueChangedForTrack args="{value: curIndex, intervalsCount: steps, ctxColor: ctxColor, ctxSatAlpha: ctxSatAlpha, ctxValAlpha: ctxValAlpha}" dir="EventDirection.DOWN" (event "evTTDownTrackCtx"))
 
 	(bindcall externalCall 'sound.playSetSoundDirect' "['slider', SoundEvent.OVER]" init=false watch=false on='rollOver')
 	(bindcall externalCall 'sound.playSetSoundDirect' "['slider', SoundEvent.PRESS]" init=false watch=false on='mouseDown')
-	(bindcall externalCall 'sound.playSetSoundDirect' "['slider', SoundEvent.CHANGE]" init=false watch=false (event "evTTSelfChannelSliderChangedInternal"))
+	(bindcall externalCall 'sound.playSetSoundDirect' "['slider', SoundEvent.CHANGE]" init=false watch=false (event "evTTSelfSliderChangedInternal"))
 
 	(scroll_bar
 		(style (width = "_width"))
 
-		(bind minimum "_min")
-		(bind maximum "_max")
+		(minimum = 0)
+		(bind maximum "steps")
 
-		(bind value "round(_value)" watch=false (event "evTTDownSliderShow") (event "evTTSelfSliderShow"))
-		(bind value "round($event.value)" watch=false init=false (event "evTTDownSliderReseed"))
+		(bind value "targetIndex" watch=false (event "evTTDownSliderShow") (event "evTTSelfSliderShow") (event "evTTSelfSliderFollow"))
+		(bind value "round(($event.value - _min) / _singleStep)" watch=false init=false (event "evTTDownSliderReseed"))
 
-		(singleStep = "_singleStep")
+		(singleStep = 1)
+
 		(scrollDuration = 2)
 
 		(orientation = "horizontal")
@@ -1081,14 +1080,14 @@
 		(thumb = 'TT_SliderThumb')
 		(track = "_track")
 
-		(dispatch evTTSelfChannelSliderChangedInternal on='valueChanged' dir="EventDirection.NONE")
+		(dispatch evTTSelfSliderChangedInternal on='valueChanged' dir="EventDirection.NONE")
 	)
 )
 
 
 
 
-(def macro TT_CHANNEL_SLIDER_TRACK_HIT ()
+(def macro TT_SLIDER_TRACK_HIT ()
 	(block
 		(style
 			(position = "absolute")
@@ -1101,7 +1100,7 @@
 )
 
 
-(def macro TT_CHANNEL_SLIDER_TRACK_STRIP (_image:expression)
+(def macro TT_SLIDER_TRACK_STRIP (_image:expression)
 	(block
 		(style
 			(height = 10px)
@@ -1111,24 +1110,21 @@
 			(backgroundSize = "fill")
 		)
 	)
-	(macro TT_CHANNEL_SLIDER_TRACK_HIT)
+	(macro TT_SLIDER_TRACK_HIT)
 )
 
 
-(def element TT_ChannelSliderTrackAlpha () (macro TT_CHANNEL_SLIDER_TRACK_STRIP _image="'url:../ttaro/mod_utils/color_picker/alpha_track.png'"))
-(def element TT_ChannelSliderTrackRed () (macro TT_CHANNEL_SLIDER_TRACK_STRIP _image="'url:../ttaro/mod_utils/color_picker/red_track.png'"))
-(def element TT_ChannelSliderTrackGreen () (macro TT_CHANNEL_SLIDER_TRACK_STRIP _image="'url:../ttaro/mod_utils/color_picker/green_track.png'"))
-(def element TT_ChannelSliderTrackBlue () (macro TT_CHANNEL_SLIDER_TRACK_STRIP _image="'url:../ttaro/mod_utils/color_picker/blue_track.png'"))
+(def element TT_SliderTrackAlpha () (macro TT_SLIDER_TRACK_STRIP _image="'url:../ttaro/mod_utils/color_picker/alpha_track.png'"))
+(def element TT_SliderTrackRed () (macro TT_SLIDER_TRACK_STRIP _image="'url:../ttaro/mod_utils/color_picker/red_track.png'"))
+(def element TT_SliderTrackGreen () (macro TT_SLIDER_TRACK_STRIP _image="'url:../ttaro/mod_utils/color_picker/green_track.png'"))
+(def element TT_SliderTrackBlue () (macro TT_SLIDER_TRACK_STRIP _image="'url:../ttaro/mod_utils/color_picker/blue_track.png'"))
 
-(def element TT_ChannelSliderTrackHue () (macro TT_CHANNEL_SLIDER_TRACK_STRIP _image="'url:../ttaro/mod_utils/color_picker/hue_strip.png'"))
-
-
-(def constant TT_HUE_CTX_COLORS [0xFFFF0000, 0xFFFF1500, 0xFFFF2A00, 0xFFFF4000, 0xFFFF5500, 0xFFFF6A00, 0xFFFF8000, 0xFFFF9500, 0xFFFFAA00, 0xFFFFBF00, 0xFFFFD400, 0xFFFFEA00, 0xFFFFFF00, 0xFFEAFF00, 0xFFD4FF00, 0xFFBFFF00, 0xFFAAFF00, 0xFF95FF00, 0xFF80FF00, 0xFF6AFF00, 0xFF55FF00, 0xFF40FF00, 0xFF2BFF00, 0xFF15FF00, 0xFF00FF00, 0xFF00FF15, 0xFF00FF2A, 0xFF00FF40, 0xFF00FF55, 0xFF00FF6A, 0xFF00FF80, 0xFF00FF95, 0xFF00FFAA, 0xFF00FFBF, 0xFF00FFD5, 0xFF00FFEA, 0xFF00FFFF, 0xFF00EAFF, 0xFF00D5FF, 0xFF00BFFF, 0xFF00AAFF, 0xFF0095FF, 0xFF0080FF, 0xFF006AFF, 0xFF0055FF, 0xFF0040FF, 0xFF002AFF, 0xFF0015FF, 0xFF0000FF, 0xFF1500FF, 0xFF2B00FF, 0xFF4000FF, 0xFF5500FF, 0xFF6A00FF, 0xFF8000FF, 0xFF9500FF, 0xFFAA00FF, 0xFFBF00FF, 0xFFD400FF, 0xFFEA00FF, 0xFFFF00FF, 0xFFFF00EA, 0xFFFF00D4, 0xFFFF00BF, 0xFFFF00AA, 0xFFFF0095, 0xFFFF0080, 0xFFFF006A, 0xFFFF0055, 0xFFFF0040, 0xFFFF002B, 0xFFFF0015])
+(def element TT_SliderTrackHue () (macro TT_SLIDER_TRACK_STRIP _image="'url:../ttaro/mod_utils/color_picker/hue_strip.png'"))
 
 
 
 
-(def element TT_ChannelSliderTrackSatDyn ()
+(def element TT_SliderTrackSatDyn ()
 	(scope
 		(event evTTDownSliderValueChangedForTrack)
 
@@ -1161,11 +1157,11 @@
 		)
 	)
 
-	(macro TT_CHANNEL_SLIDER_TRACK_HIT)
+	(macro TT_SLIDER_TRACK_HIT)
 )
 
 
-(def element TT_ChannelSliderTrackValDyn ()
+(def element TT_SliderTrackValDyn ()
 	(scope
 		(event evTTDownSliderValueChangedForTrack)
 
@@ -1198,11 +1194,44 @@
 		)
 	)
 
-	(macro TT_CHANNEL_SLIDER_TRACK_HIT)
+	(macro TT_SLIDER_TRACK_HIT)
 )
 
 
-(def element TT_ChannelSliderTrackNeutral () (macro TT_CHANNEL_SLIDER_TRACK_STRIP _image="'url:../service_kit/slider/slider_track.png'"))
+(def element TT_SliderTrackNeutral () (macro TT_SLIDER_TRACK_STRIP _image="'url:../service_kit/slider/slider_track.png'"))
+
+
+(def element TT_SliderTrackFill ()
+	(scope
+		(event evTTDownSliderValueChangedForTrack)
+
+		(var filledWidth:number = 0)
+		(bind filledWidth "($event.value / $event.intervalsCount) * 100" watch=false init=false (event "evTTDownSliderValueChangedForTrack"))
+	)
+
+	(block
+		(style
+			(height = 10px)
+			(paddingLeft = "XXS")
+			(paddingRight = "XXS")
+			(width = 100%)
+			(backgroundImage = 'url:../service_kit/slider/slider_track.png')
+			(scale9grid = "[4, 0, 4, 0]")
+		)
+
+		(block
+			(style
+				(position = "absolute")
+				(top = 2px)
+				(height = 6px)
+				(backgroundColor = 0xFF4CE7A9)
+				(bind width "1% * filledWidth")
+			)
+		)
+	)
+
+	(macro TT_SLIDER_TRACK_HIT)
+)
 
 (def element TT_ButtonOptionElement (_node:gfx) layout=true
 	(scope
@@ -1281,9 +1310,9 @@
 				(align = "middle|center")
 				(marginRight = "TT_CONFIG_OPTION_VALUE_WIDTH + TT_CONFIG_OPTION_VALUE_MARGIN")
 			)
-			(element SwitchWithoutLabel _state = "prefValue" _methods = "saveMethods")
+			(element TT_Switch _state = "prefValue" _methods = "saveMethods")
 		)
-		(controller $Instance renderer='ImageButton'
+		(controller $Instance renderer='TT_ImageButton'
 			(bind enabled "prefValue != defaultValue")
 			(args
 				_width = "TT_CONFIG_RESET_BUTTON_SIZE"
@@ -1298,10 +1327,6 @@
 
 (def element TT_MinimapSliderOptionElement (_node:gfx) layout=true
 	(scope
-		(event evTTUpSliderValueChanged)
-		(event evTTUpValueReset)
-		(event evShow)
-
 		(var key:str = "_node && _node.key ? _node.key : ''")
 
 		(var entityWatcher:gfx = "$datahub.getPrimWatcher(CC.minimapOption, key)")
@@ -1315,13 +1340,9 @@
 		(var minLabel:str = "_node.minLabel ? _node.minLabel : ''")
 		(var maxLabel:str = "_node.maxLabel ? _node.maxLabel : ''")
 		(var step:number = "null != _node.step ? _node.step : 1")
-		(var steps:number = "round((maxValue - minValue) / step)")
 		(var defaultValue:number = "null != _node.default ? _node.default : 20")
-		(var defaultSliderValue:number = "round((defaultValue - minValue) / step)")
 		(var rounding:number = "_node.decimals ? _node.decimals : 0")
-
-		(var sliderValue:number = "round((prefValue - minValue) / step)" watch=false (event "evShow"))
-		(bind sliderValue "$event.value" watch=false init=false (event "evTTUpValueReset") (event "evTTUpSliderValueChanged"))
+		(var resetMethods:array = "[{ type: 'direct.action', name: 'battle.saveMinimapOption', args: [ key, defaultValue ] }]")
 
 		(var isMinLabelAvailable:bool = "prefValue == minValue && minLabel")
 		(var isMaxLabelAvailable:bool = "prefValue == maxValue && maxLabel")
@@ -1332,8 +1353,6 @@
 	)
 
 	(bind visible "isOptionAvailable")
-	(dispatch evShow args="{}" on='addedToStage')
-	(bindcall externalCall 'direct.action' "['battle.saveMinimapOption', [key, $event.value * step + minValue]]" init=false watch=false (event "evTTUpSliderValueChanged") (event "evTTUpValueReset"))
 
 	(style (width = "100%"))
 
@@ -1341,11 +1360,16 @@
 		(style (width = "TT_CONFIG_OPTION_WIDTH") (height = "23px") (align = "left|middle"))
 		(hblock
 			(style (align = "middle|center"))
-			(element DefaultSlider
-				_value = "sliderValue"
-				_intervalsCount = "steps"
-				_unitsInStepInterval = "step"
+			(element TT_Slider
+				_value = "prefValue"
+				_min = "minValue"
+				_max = "maxValue"
+				_singleStep = "step"
+				_decimals = "rounding"
 				_width = "TT_CONFIG_OPTION_CONTROL_WIDTH"
+				_track = "'TT_SliderTrackFill'"
+				_writeAction = "'battle.saveMinimapOption'"
+				_writeArg0 = "key"
 			)
 			(tf
 				(class $TextDefault)
@@ -1360,14 +1384,13 @@
 		)
 		(block
 			(bind visible "prefValue != defaultValue")
-			(controller $Instance renderer='ImageButton'
+			(controller $Instance renderer='TT_ImageButton'
 				(args
 					_width = "TT_CONFIG_RESET_BUTTON_SIZE"
 					_height = "TT_CONFIG_RESET_BUTTON_SIZE"
 					_backgroundImage = 'url:../service_kit/buttons/context/update.png'
 					_tooltipText = "'IDS_PREFERENCES_CONTEXT_PREF_RESET'"
-					_dispatchedEv = "'evTTUpValueReset'"
-					_dispatchParams = "{'value': defaultSliderValue}"
+					_methods = "resetMethods"
 				)
 			)
 		)
@@ -1417,7 +1440,7 @@
 			)
 		)
 
-		(controller $Instance renderer='ImageButton'
+		(controller $Instance renderer='TT_ImageButton'
 			(bind enabled "prefValue != defaultValue")
 			(args
 				_width = "TT_CONFIG_RESET_BUTTON_SIZE"
@@ -1435,7 +1458,7 @@
 
 (def element TT_GroupTriggerElement (_node:gfx, _slug:str) layout=true
 	(scope
-		(macro MOUSE_HANDLER_SCOPE)
+		(macro TT_MOUSE_HANDLER_SCOPE)
 
 		(var moreText:str = "tr('IDS_TT_MORE_OPTIONS')")
 
@@ -1519,7 +1542,7 @@
 				)
 			)
 
-			(macro MOUSE_HANDLER _soundSet = "'dropdown'")
+			(macro TT_MOUSE_HANDLER _soundSet = "'dropdown'")
 
 			(controller $Tooltip
 				(renderer = 'TT_GroupPopupElement')

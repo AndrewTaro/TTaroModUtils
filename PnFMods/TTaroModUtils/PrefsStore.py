@@ -6,6 +6,7 @@ from Util import logInfo, logError, logException
 
 _MIGRATION_FIELD = '__migrationVersion'
 
+
 _PENDING_FIELD = '__pendingEdits'
 
 _RESERVED_OPAQUE = frozenset(['ttModConfig.__uiState'])
@@ -21,7 +22,7 @@ class PrefsStore(object):
         self._saveMode = saveMode
         self._flat = {}
         self._version = {}
-        self._pending = {}
+        self._locked = {}
         self._fresh = set()
         self._dirty = set()
         self._dir = Util.prefsDir()
@@ -31,38 +32,91 @@ class PrefsStore(object):
     def loadAll(self):
         Util.ensureDir(self._dir)
         self._cleanupOrphanTmp()
+        self._locked = {}
         for slug in self._index.slugs():
             try:
                 self._loadMod(slug)
             except Exception as e:
                 logException('load failed for ' + slug, e)
-                self._flat[slug] = {}
-                self._version[slug] = 0
+                self._lock(slug, 'loadError')
+
+
+
+    def _lock(self, slug, reason):
+        logError('%s LOCKED (%s): settings read as defaults and are not saved' % (slug, reason))
+        self._locked[slug] = reason
+        self._flat[slug] = {}
+        self._version[slug] = 0
+        self._dirty.discard(slug)
+        self._fresh.discard(slug)
+        self._writer.discard(self._fileId(slug))
+
+    def isLocked(self, slug):
+        return slug in self._locked
+
+
+    def lockReason(self, slug):
+        return self._locked.get(slug)
+
+    def _lockReason(self, slug, version):
+        target = self._index.migrationTarget(slug)
+        status = self._index.migrationStatus(slug)
+        if target is None:
+            return status
+        if version > target:
+            return 'ahead'
+        if version == target:
+            return None
+        if status != 'ok':
+            return status
+        versions = self._index.migrationVersions(slug)
+        for v in range(version + 1, target + 1):
+            if v not in versions:
+                return 'gap'
+        return None
+
+
+    def _readStore(self, path):
+        unreadable = False
+        for p in (path, path + '.bak'):
+            if not Util.isFile(p):
+                continue
+            raw = Util.readJson(p)
+            if isinstance(raw, dict):
+                return raw, False
+            unreadable = True
+        return None, unreadable
 
     def _loadMod(self, slug):
         import Migrations
 
-        path = self._path(slug)
-        raw = Util.readJson(path)
-        if raw is None:
-            raw = Util.readJson(path + '.bak')
+        raw, unreadable = self._readStore(self._path(slug))
+        if unreadable:
+            return self._lock(slug, 'storeCorrupt')
         flat = {}
         version = 0
         pending = set()
-        if isinstance(raw, dict):
+        if raw is not None:
             version = raw.get(_MIGRATION_FIELD, 0) or 0
+            if not _isCount(version):
+                return self._lock(slug, 'storeCorrupt')
             stored = raw.get(_PENDING_FIELD)
             if isinstance(stored, list):
                 pending = set(k for k in stored if isinstance(k, basestring))
             nested = raw.get('prefs', {})
             if isinstance(nested, dict):
-                opaque = self._index.positionKeys(slug)
+                opaque = Migrations.positionSources(
+                    self._index.migrationFile(slug), version,
+                    self._index.positionKeys(slug), self._index.migrationTarget(slug))
                 if slug == self._index.frameworkSlug():
                     opaque = opaque | _RESERVED_OPAQUE
                 flat = Util.flattenWithLeaves(nested, opaque)
+        reason = self._lockReason(slug, version)
+        if reason:
+            return self._lock(slug, reason)
 
 
-        if not isinstance(raw, dict) or not raw:
+        if not raw:
             self._fresh.add(slug)
 
         reader = self._legacyReader
@@ -74,13 +128,10 @@ class PrefsStore(object):
         ownedKeys = self._index.legacyOwnedFromKeys(slug)
         flat, newVersion = Migrations.run(
             flat, version, self._index.migrationFile(slug),
-            legacyReader=reader, ownedKeys=ownedKeys, slug=slug, protected=pending)
+            legacyReader=reader, ownedKeys=ownedKeys, slug=slug, protected=pending,
+            target=self._index.migrationTarget(slug))
 
-        changed = (newVersion != version)
-        if pending and not self._index.migrationRefused(slug):
-            pending = set()
-            changed = True
-        self._pending[slug] = pending
+        changed = (newVersion != version) or bool(pending)
         changed = self._pruneOrphans(slug, flat) or changed
         changed = self._coerceLoaded(slug, flat) or changed
 
@@ -146,12 +197,9 @@ class PrefsStore(object):
         return slug in self._fresh
 
 
-    def _markPending(self, slug, keys):
-        if self._index.migrationRefused(slug):
-            self._pending.setdefault(slug, set()).update(keys)
-
     def set(self, slug, fullKey, value):
-        self._markPending(slug, [fullKey])
+        if slug in self._locked:
+            return
         flat = self._flat.setdefault(slug, {})
         default = self._index.defaultFor(slug, fullKey)
         if _equal(value, default):
@@ -162,6 +210,8 @@ class PrefsStore(object):
         self._dirty.add(slug)
 
     def setReserved(self, slug, fullKey, value):
+        if slug in self._locked:
+            return
         flat = self._flat.setdefault(slug, {})
         flat[fullKey] = value
         self._dirty.add(slug)
@@ -170,19 +220,22 @@ class PrefsStore(object):
         self._index = schemaIndex
 
     def remove(self, slug, fullKey):
-        self._markPending(slug, [fullKey])
+        if slug in self._locked:
+            return
         flat = self._flat.get(slug, {})
         if fullKey in flat:
             del flat[fullKey]
             self._dirty.add(slug)
 
     def resetAll(self, slug):
-        self._markPending(slug, self._index.keySet(slug))
+        if slug in self._locked:
+            return
         self._flat[slug] = {}
         self._dirty.add(slug)
 
     def writePosition(self, slug, fullKey, resKey, x, y):
-        self._markPending(slug, [fullKey])
+        if slug in self._locked:
+            return
         flat = self._flat.setdefault(slug, {})
         posMap = flat.get(fullKey)
         if not isinstance(posMap, dict):
@@ -193,13 +246,12 @@ class PrefsStore(object):
         self._dirty.add(slug)
 
     def removePositionBucket(self, slug, fullKey, resKey):
-        if not resKey:
+        if not resKey or slug in self._locked:
             return False
         flat = self._flat.get(slug, {})
         posMap = flat.get(fullKey)
         if not isinstance(posMap, dict) or resKey not in posMap:
             return False
-        self._markPending(slug, [fullKey])
         posMap = dict(posMap)
         del posMap[resKey]
         if posMap:
@@ -222,7 +274,7 @@ class PrefsStore(object):
         return slug in self._dirty
 
     def flush(self, slug):
-        if slug not in self._flat:
+        if slug not in self._flat or slug in self._locked:
             return
         snapshot = self._serialize(slug)
         self._writer.enqueue(self._fileId(slug), snapshot)
@@ -234,14 +286,10 @@ class PrefsStore(object):
 
     def _serialize(self, slug):
         nested = Util.nest(self._flat.get(slug, {}))
-        out = {
+        return {
             _MIGRATION_FIELD: self._version.get(slug, 0),
             'prefs': nested,
         }
-        pending = self._pending.get(slug)
-        if pending:
-            out[_PENDING_FIELD] = sorted(pending)
-        return out
 
     def shutdown(self):
         self.flushAll()
@@ -265,6 +313,10 @@ class PrefsStore(object):
                     _u1.remove(_u1.path.join(self._dir, name))
                 except Exception:
                     pass
+
+
+def _isCount(v):
+    return isinstance(v, (int, long)) and not isinstance(v, bool) and v >= 0
 
 
 def _isReserved(fullKey):
@@ -325,6 +377,9 @@ class _DeferredWriter(object):
             except Exception as e:
                 logException('deferred writer schedule failed, writing sync', e)
                 self._drain()
+
+    def discard(self, fileId):
+        self._pending.pop(fileId, None)
 
     def _onTimer(self):
         if self._handle is not None:

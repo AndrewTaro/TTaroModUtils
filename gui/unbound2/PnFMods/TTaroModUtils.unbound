@@ -92,7 +92,7 @@
 		(height = 30)
 	)
 
-	(element ButtonSettingsSmall
+	(element TT_ButtonSettingsSmall
 		(style
 			(position = "absolute")
 			(left = "3px")
@@ -246,7 +246,8 @@
 		(macro TT_POPUP_DEPTH_SCOPE _tag="'gear'")
 
 		(macro TT_GET_FRAMEWORK)
-		(var hasFramework:bool = "fwComp ? true : false" (event "fwComp.evDataChanged"))
+
+		(var hasFramework:bool = "fwComp ? !fwComp.data.locked : false" (event "fwComp.evDataChanged"))
 	)
 	(dispatch evTTSelfHideInfotip args="{}" (bind trigger "isMouseActive"))
 
@@ -265,7 +266,7 @@
 
 	)
 
-	(element ButtonSettingsSmall
+	(element TT_ButtonSettingsSmall
 		(style
 			(position = "absolute")
 			(left = "3px")
@@ -313,7 +314,7 @@
 
 (def element TT_ModConfigsElement (_modData:gfx)layout=true
 	(scope
-		(macro MOUSE_HANDLER_SCOPE)
+		(macro TT_MOUSE_HANDLER_SCOPE)
 		(macro STAGE_SIZE)
 		(var clampedMaxHeight:number = "min(stageHeight - 300, stageHeight * 0.7)")
 
@@ -340,8 +341,8 @@
 		(var pageNodes:array = "pageIsGroup && pageGroup.children ? pageGroup.children : []")
 
 		(var pageGroupKey:str = "pageIsGroup && pageGroup.key ? pageGroup.key : ''")
-		(macro TT_GET_PREF _varName="'pageGate'" _key="pageGroupKey")
-		(var isPageApplicable:bool = "null == pageGateC ? true : pageGate.visible")
+		(macro TT_GET_SINGLE_PREF _varName="'pageGate'" _key="pageGroupKey")
+		(var isPageApplicable:bool = "null == __prefComp ? true : pageGate.visible")
 	)
 	(style
 		(align = "middle|center")
@@ -355,7 +356,7 @@
 
 
 	(bindcall externalCall 'inputMapping.onAction' "['battleChat.rollOverChanged', { rollOver: rollOver }]" init=false watch=false (bind trigger "rollOver"))
-	(macro MOUSE_EVENTS_DISPATCHER)
+	(macro TT_MOUSE_EVENTS)
 
 
 	(controller $Instance renderer='TT_ArrowSelectElement'
@@ -421,7 +422,7 @@
 
 (def element TT_ArrowButton (_enabled:bool=true, _flip:bool=false, _methods:array=[]) layout=true
 	(scope
-		(macro MOUSE_HANDLER_SCOPE)
+		(macro TT_MOUSE_HANDLER_SCOPE)
 		(var isHot:bool  = "_enabled && rollOver && !mouseDown")
 		(var isPressed:bool = "_enabled && mouseDown")
 		(var glyphAlpha:number = "_enabled ? 1.0 : TT_PAGE_ARROW_ALPHA_OFF")
@@ -476,7 +477,7 @@
 
 	(block
 		(class $FullsizeAbsolute)
-		(macro MOUSE_HANDLER
+		(macro TT_MOUSE_HANDLER
 			_enabled = "_enabled"
 			_methods = "_methods"
 			_soundSet = "'button_context'"
@@ -598,6 +599,8 @@
 		(var children:array = "_node && _node.children ? _node.children : []")
 		(var isInline:bool = "_node && _node.display == 'transparent' ? true : false")
 		(var hasLabel:bool = "label != '' && !isInline")
+
+		(var groupMarginTop:number = "isInline ? 0 : (_depth == 0 ? TT_CONFIG_SECTION_MARGIN : 8px)")
 		(var groupKey:str  = "_node && _node.key ? _node.key : ''")
 
 
@@ -611,7 +614,9 @@
 		(var isCollapsible:bool = "_node && _node.collapse && !isInline ? true : false")
 		(var collapseState:str  = "isCollapsible ? _node.collapse : 'expanded'")
 
-		(macro MOUSE_HANDLER_SCOPE "'groupExpand_'")
+		(macro TT_MOUSE_HANDLER_SCOPE "'GroupExpand'")
+
+		(macro TT_MOUSE_HANDLER_SCOPE "'GroupExpandArrow'")
 
 
 
@@ -619,15 +624,22 @@
 		(var isExpanded:bool = "startsExpanded")
 
 
-		(bind isExpanded "isCollapsible ? !isExpanded : isExpanded" watch=false init=false (event "groupExpand_evClicked"))
+		(bind isExpanded "isCollapsible ? !isExpanded : isExpanded" watch=false init=false (event "evTTSelfGroupExpandClicked"))
 
 		(var hasExpanded:bool = "startsExpanded")
-		(bind hasExpanded "true" watch=false init=false (event "groupExpand_evClicked"))
+		(bind hasExpanded "true" watch=false init=false (event "evTTSelfGroupExpandClicked"))
+
+		(var expandArrowOver:bool = "GroupExpandrollOver && !GroupExpandmouseDown || GroupExpandArrowrollOver && !GroupExpandArrowmouseDown")
+		(var expandArrowDown:bool = "GroupExpandrollOver && GroupExpandmouseDown || GroupExpandArrowrollOver && GroupExpandArrowmouseDown")
+		(var expandArrowAlpha:number = "	expandArrowDown	? 0.6 :
+											expandArrowOver	? 1
+															: 0.75")
+		(var expandArrowRotation:number = "isExpanded ? 90 : 0")
 
 
 
-		(macro TT_GET_PREF _varName="'grpVis'" _key="groupKey")
-		(var isApplicable:bool = "null == grpVisC ? true : grpVis.visible")
+		(macro TT_GET_SINGLE_PREF _varName="'grpVis'" _key="groupKey")
+		(var isApplicable:bool = "null == __prefComp ? true : grpVis.visible")
 
 		(var localizedTitleText:str = "tr(label)")
 
@@ -645,7 +657,7 @@
 		(bind width "isInline ? 100% : (_depth == 0 ? 90% : 100%)")
 
 		(bind paddingLeft "(isInline || _depth == 0) ? 0 : TT_CONFIG_GROUP_INDENT")
-		(bind marginTop "_depth == 0 ? TT_CONFIG_SECTION_MARGIN : (isInline ? 0 : 8px)")
+		(bind marginTop "groupMarginTop")
 		(bind marginBottom "isInline ? 0 : TT_CONFIG_SECTION_MARGIN")
 		(backgroundColor = 0x01000000)
 		(bind alpha "isApplicable ? 1.0 : 0.3")
@@ -667,10 +679,41 @@
 				(vcenter = 0%)
 				(alpha = "0.7")
 			)
-			(element ButtonExpand
-				_isInOverState="groupExpand_rollOver && !groupExpand_mouseDown"
-				_isInDownState="groupExpand_rollOver && groupExpand_mouseDown"
-				_expanded="isExpanded"
+			(block
+				(style
+					(width = 13px)
+					(height = 13px)
+					(align = "center|middle")
+				)
+
+				(alpha = "expandArrowAlpha")
+
+				(controller $Animation
+					(bindcall play	duration=0.07	to="{alpha: expandArrowAlpha}"	(bind trigger "expandArrowAlpha"))
+				)
+
+				(macro TT_MOUSE_HANDLER
+					_prefix = "'GroupExpandArrow'"
+					_soundSet = "'dropdown'"
+				)
+
+				(block
+					(style
+						(hitTest = "false")
+						(backgroundSize = "autosize")
+						(backgroundImage = "'url:../service_kit/buttons/expand_over.png'")
+
+						(pivotX = 50%)
+						(pivotY = 50%)
+						(left = 0%)
+						(right = 0%)
+						(rotation = "expandArrowRotation")
+					)
+
+					(controller $Animation
+						(bindcall play	duration=0.15	to="{rotation: expandArrowRotation}"	(bind trigger "expandArrowRotation"))
+					)
+				)
 			)
 		)
 		(tf
@@ -702,8 +745,8 @@
 			(macro TT_TOOLTIP_BEHAVIOUR)
 		)
 
-		(macro MOUSE_HANDLER
-			_prefix = "'groupExpand_'"
+		(macro TT_MOUSE_HANDLER
+			_prefix = "'GroupExpand'"
 			_enabled = "isCollapsible"
 			_soundSet = "'dropdown'"
 		)
@@ -743,10 +786,10 @@
 		(var rendererTable:dict = "isMinimap ? TT_MINIMAP_RENDERERS : TT_CONFIG_RENDERERS")
 		(var renderer:str = "control in rendererTable ? rendererTable[control] : ''")
 
-		(macro TT_GET_PREF _varName="'prefData'" _key="key")
+		(macro TT_GET_SINGLE_PREF _varName="'prefData'" _key="key")
 		(var isInteractive:bool = "(isMinimap || control == 'button' || control == 'position') ? true : (null != prefData && null != prefData.visible ? prefData.visible : true)")
 
-		(macro MOUSE_HANDLER_SCOPE)
+		(macro TT_MOUSE_HANDLER_SCOPE)
 
 		(var hintKey:str = "_node && _node.hint && _node.hint.text ? _node.hint.text : ''")
 		(var localizedHintText:str = "tr(hintKey)")
@@ -766,7 +809,7 @@
 		)
 	)
 
-	(macro MOUSE_EVENTS_DISPATCHER)
+	(macro TT_MOUSE_EVENTS)
 
 
 	(style
@@ -796,8 +839,8 @@
 				(alpha = 0)
 			)
 			(controller $Animation
-				(bindcall play duration = 0.1 to = { alpha: 1 } action="killAll" (event "evRollOver"))
-				(bindcall play duration = 0.1 to = { alpha: 0 } action="killAll" (event "evRollOut"))
+				(bindcall play duration = 0.1 to = { alpha: 1 } action="killAll" (event "evTTSelfRollOver"))
+				(bindcall play duration = 0.1 to = { alpha: 0 } action="killAll" (event "evTTSelfRollOut"))
 			)
 		)
 
@@ -890,13 +933,13 @@
 	(scope
 
 
-		(macro MOUSE_HANDLER_SCOPE)
+		(macro TT_MOUSE_HANDLER_SCOPE)
 
 		(var groupKey:str = "_node && _node.key ? _node.key : ''")
 
 
-		(macro TT_GET_PREF _varName="'grpVis'" _key="groupKey")
-		(var isInteractive:bool = "null == grpVisC ? true : grpVis.visible")
+		(macro TT_GET_SINGLE_PREF _varName="'grpVis'" _key="groupKey")
+		(var isInteractive:bool = "null == __prefComp ? true : grpVis.visible")
 
 		(var hintKey:str = "_node && _node.hint && _node.hint.text ? _node.hint.text : ''")
 		(var localizedHintText:str = "tr(hintKey)")
@@ -919,7 +962,7 @@
 		)
 	)
 
-	(macro MOUSE_EVENTS_DISPATCHER)
+	(macro TT_MOUSE_EVENTS)
 
 	(style
 		(bind width "_depth == 0 ? 90% : 100%")
@@ -948,8 +991,8 @@
 				(alpha = 0)
 			)
 			(controller $Animation
-				(bindcall play duration = 0.1 to = { alpha: 1 } action="killAll" (event "evRollOver"))
-				(bindcall play duration = 0.1 to = { alpha: 0 } action="killAll" (event "evRollOut"))
+				(bindcall play duration = 0.1 to = { alpha: 1 } action="killAll" (event "evTTSelfRollOver"))
+				(bindcall play duration = 0.1 to = { alpha: 0 } action="killAll" (event "evTTSelfRollOut"))
 			)
 		)
 
@@ -998,7 +1041,7 @@
 
 (def element TT_GroupPopupElement (_node:gfx, _slug:str) layout=true
 	(scope
-		(macro MOUSE_HANDLER_SCOPE)
+		(macro TT_MOUSE_HANDLER_SCOPE)
 		(macro STAGE_SIZE)
 		(var clampedMaxHeight:number = "min(stageHeight - 300, stageHeight * 0.7)")
 
@@ -1024,7 +1067,7 @@
 
 
 	(bindcall externalCall 'inputMapping.onAction' "['battleChat.rollOverChanged', { rollOver: rollOver }]" init=false watch=false (bind trigger "rollOver"))
-	(macro MOUSE_EVENTS_DISPATCHER)
+	(macro TT_MOUSE_EVENTS)
 
 	(hblock
 		(bind visible "hasLabel")
@@ -1110,8 +1153,7 @@
 
 (def element TT_WindowCloseButton (_tooltipText:str='IDS_CLOSE', _dispatchedEv:str='', _dispatchParams:gfx={}) layout=true
 	(scope
-		(macro SIMPLE_MOUSE_OVER_DOWN_SELECTED_COLORTRANSFORM_SCOPE)
-		(macro MOUSE_HANDLER_SCOPE)
+		(macro TT_MOUSE_HANDLER_SCOPE)
 
 		(event evTTDownCloseAll)
 	)
@@ -1123,10 +1165,13 @@
 		(backgroundImage = 'url:../service_kit/buttons/button_close.png')
 	)
 
-	(macro SIMPLE_MOUSE_OVER_DOWN_SELECTED_COLORTRANSFORM "true")
+
+	(bind colorTransform "	rollOver && mouseDown	? {redMultiplier: 0.85, greenMultiplier: 0.85, blueMultiplier: 0.85} :
+							rollOver				? {redOffset: 40, greenOffset: 40, blueOffset: 40}
+													: CT_NONE")
 
 	(controller $Tooltip
-		(renderer='SimpleStatusTooltip')
+		(renderer='TT_SimpleStatusTooltip')
 		(bind enabled "_tooltipText")
 		(args
 			_text = "_tooltipText"
@@ -1136,7 +1181,7 @@
 		(bindcall hide (event "evTTDownCloseAll"))
 	)
 
-	(macro MOUSE_HANDLER
+	(macro TT_MOUSE_HANDLER
 		_dispatchedEv = "_dispatchedEv"
 		_dispatchParams = "_dispatchParams"
 		_soundSet = "'button_default'"
@@ -1206,7 +1251,7 @@
 		(bindcall externalCall 'direct.action' "['mod.setCursorHold', [false]]" init=false watch=false on=evHide)
 	)
 
-	(element ButtonSettingsSmall
+	(element TT_ButtonSettingsSmall
 		(bind visible "isMouseActive")
 		(alpha = 0.7)
 	)
@@ -1223,7 +1268,7 @@
 		(bind hitTest "_isEnabled")
 	)
 
-	(macro TOOLTIP_SYSTEM_DEFAULT_BACKGROUND)
+	(macro TT_TOOLTIP_SYSTEM_DEFAULT_BACKGROUND)
 
 	(element TOOLTIP_SYSTEM_DEFAULT_CONTAINER
 		(style
@@ -1296,15 +1341,72 @@
 
 
 
+(def macro TT_MOUSE_HANDLER_SCOPE (_prefix:expression="''")
+	(event name="'evTTSelf' + _prefix + 'Clicked'")
+	(event name="'evTTSelf' + _prefix + 'RollOver'")
+	(event name="'evTTSelf' + _prefix + 'RollOut'")
+	(event name="'evTTSelf' + _prefix + 'MouseDown'")
+	(event name="'evTTSelf' + _prefix + 'StageMouseUp'")
+
+	(var name="_prefix + 'rollOver'" type=bool value="$event.isOver" init=false watch=false (event "$scope['evTTSelf' + _prefix + 'RollOver']") (event "$scope['evTTSelf' + _prefix + 'RollOut']"))
+	(var name="_prefix + 'mouseDown'" type=bool value="$event.isDown" init=false watch=false (event "$scope['evTTSelf' + _prefix + 'MouseDown']") (event "$scope['evTTSelf' + _prefix + 'StageMouseUp']"))
+)
+
+
+(def macro TT_MOUSE_EVENTS (_prefix:expression="''")
+	(dispatch "'evTTSelf' + _prefix + 'Clicked'" on='click')
+	(dispatch "'evTTSelf' + _prefix + 'RollOver'" on='rollOver' args="{isOver: true}")
+	(dispatch "'evTTSelf' + _prefix + 'RollOut'" on='rollOut' args="{isOver: false}")
+	(dispatch "'evTTSelf' + _prefix + 'MouseDown'" on='mouseDown' args="{isDown: true}")
+	(dispatch "'evTTSelf' + _prefix + 'StageMouseUp'" on='stageMouseUp' args="{isDown: false}")
+)
+
+
+
+(def macro TT_MOUSE_HANDLER (_enabled:expression=true, _prefix:expression="''", _dispatchedEv:expression='', _dispatchParams:expression={}, _methods:expression=[], _soundSet:expression='')
+	(block
+		(bind visible "_enabled")
+		(class $FullsizeAbsolute)
+		(style (backgroundColor = 0x01000000))
+
+		(macro TT_MOUSE_EVENTS "_prefix")
+
+		(bindcall externalCall 'sound.playSetSoundDirect' "[_soundSet, SoundEvent.OVER]" init=false watch=false (event "$scope['evTTSelf' + _prefix + 'RollOver']"))
+		(bindcall externalCall 'sound.playSetSoundDirect' "[_soundSet, SoundEvent.OUT]" init=false watch=false (event "$scope['evTTSelf' + _prefix + 'RollOut']"))
+		(bindcall externalCall 'sound.playSetSoundDirect' "[_soundSet, SoundEvent.PRESS]" init=false watch=false (event "$scope['evTTSelf' + _prefix + 'MouseDown']"))
+		(bindcall externalCall 'sound.playSetSoundDirect' "[_soundSet, SoundEvent.CLICK]" init=false watch=false on='click')
+
+		(dispatch "_dispatchedEv" args="_dispatchParams ? _dispatchParams : null" dir="EventDirection.UP" (event "$scope['evTTSelf' + _prefix + 'Clicked']"))
+		(controller $Repeat
+			(bind enabled "_methods")
+			(bind count "_methods.length")
+			(exprs
+				(bindcall externalCall	"$event.buttonIdx == MouseButtons.LEFT ? _methods[$index].type : ''"
+										"[_methods[$index].name, _methods[$index].args]"
+										init=false watch=false (event "$scope['evTTSelf' + _prefix + 'Clicked']"))
+			)
+		)
+	)
+)
+
+
+
 
 
 
 
 
 (def macro TT_GET_PREF (_varName:expression, _key:expression)
-	(var name="_varName + 'E'" type=gfx value="$datahub.getPrimaryEntity(CC.mods_DataComponent, 'modPrefs.' + _key)")
-	(var name="_varName + 'C'" type=gfx value="$scope[_varName + 'E'] ? $scope[_varName + 'E'].mods_DataComponent : null")
+	(var name="_varName + 'C'" type=gfx value="$datahub.getPrimaryComponent(CC.mods_DataComponent, 'modPrefs.' + _key)")
 	(var name="_varName" type=gfx value="$scope[_varName + 'C'] ? $scope[_varName + 'C'].data : null" (event "$scope[_varName + 'C'].evDataChanged"))
+)
+
+
+
+
+(def macro TT_GET_SINGLE_PREF (_varName:expression, _key:expression)
+	(var __prefComp:gfx = "$datahub.getPrimaryComponent(CC.mods_DataComponent, 'modPrefs.' + _key)")
+	(var name="_varName" type=gfx value="__prefComp ? __prefComp.data : null" (event "__prefComp.evDataChanged"))
 )
 
 
@@ -1318,8 +1420,7 @@
 
 
 (def macro TT_IS_MOD_INSTALLED (_varName:expression, _slug:expression)
-	(var name="_varName + 'E'" type=gfx value="$datahub.getPrimaryEntity(CC.mods_DataComponent, 'modPrefs.installedMods')")
-	(var name="_varName + 'C'" type=gfx value="$scope[_varName + 'E'] ? $scope[_varName + 'E'].mods_DataComponent : null")
+	(var name="_varName + 'C'" type=gfx value="$datahub.getPrimaryComponent(CC.mods_DataComponent, 'modPrefs.installedMods')")
 
 	(var name="_varName + 'L'" type=array value="$scope[_varName + 'C'] ? ($scope[_varName + 'C'].data.mods ? $scope[_varName + 'C'].data.mods : []) : []" (event "$scope[_varName + 'C'].evDataChanged"))
 	(var name="_varName" type=bool value="_slug in $scope[_varName + 'L']")
@@ -1415,8 +1516,8 @@
 	(align = "_align")
 	(position = "_position")
 	(screenBoundsOffset = "{ left: M, top: M, right: M, bottom: M }")
-	(pinTop='InfotipPinTop')
-	(pinBottom='InfotipPinBottom')
+	(pinTop='TT_InfotipPinTop')
+	(pinBottom='TT_InfotipPinBottom')
 	(cache = false)
 )
 

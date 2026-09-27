@@ -103,12 +103,64 @@ def hsvToRgb(h, s, v):
     return out[0], out[1], out[2]
 
 
-def derive(packed, minInt, maxInt):
+HSV_RANGE = {'h': 360.0, 's': 100.0, 'v': 100.0}
+
+
+def hsvFrom(r, g, b, keep):
+
+    h, s, v = rgbToHsv(r, g, b)
+    if keep is not None:
+        if max(r, g, b) == min(r, g, b):
+            h = keep[0]
+        if max(r, g, b) == 0:
+            s = keep[1]
+    return h, s, v
+
+
+def workingHsv(packed, hsv):
+
+    _, r, g, b = unpack(packed)
+    if hsv is not None and hsvToRgb(*hsv) == (r, g, b):
+        return tuple(hsv)
+    return rgbToHsv(r, g, b)
+
+
+def hueColor(h):
+
+    return pack(255, *hsvToRgb(h, 100.0, 100.0))
+
+
+def editChannel(packed, hsv, channel, value, typed):
+
+    x = float(value)
+    if x != x:
+        return None
+    a, r, g, b = unpack(packed)
+    if channel in HSV_RANGE:
+        i = 'hsv'.index(channel)
+        cur = hsv[i]
+        x = min(max(x, 0.0), HSV_RANGE[channel])
+
+        if x == cur or (not typed and x == round(cur)):
+            return None
+        hsv = tuple(hsv[:i]) + (x,) + tuple(hsv[i + 1:])
+        r, g, b = hsvToRgb(*hsv)
+        return pack(a, r, g, b), hsv
+    if channel in CHANNELS:
+        argb = [a, r, g, b]
+        argb[CHANNELS.index(channel)] = clampByte(x)
+        if channel != 'a':
+            hsv = hsvFrom(argb[1], argb[2], argb[3], hsv)
+        return pack(*argb), tuple(hsv)
+    return None
+
+
+def derive(packed, minInt, maxInt, hsv=None):
     try:
         a, r, g, b = unpack(packed)
         bounds = channelBounds(minInt, maxInt)
         full = isFullRange(minInt, maxInt)
-        h, s, v = rgbToHsv(r, g, b)
+        h, s, v = workingHsv(packed, hsv)
         data = {
             'value': int(packed) & 0xFFFFFFFF,
             'a': a / 255.0, 'r': r / 255.0, 'g': g / 255.0, 'b': b / 255.0,
@@ -116,6 +168,9 @@ def derive(packed, minInt, maxInt):
             'vec4': [r / 255.0, g / 255.0, b / 255.0, a / 255.0],
             'hex': toHex(packed),
             'h': h, 's': s, 'v': v,
+            'hueColor': hueColor(h),
+            'satOverlayAlpha': 1.0 - v / 100.0,
+            'valOverlayAlpha': 1.0 - s / 100.0,
             'pickerMode': 'hsv' if full else 'rgb',
             'aEditable': bounds['a'][0] != bounds['a'][1],
             'rEditable': bounds['r'][0] != bounds['r'][1],
