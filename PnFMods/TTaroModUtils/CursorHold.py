@@ -60,6 +60,15 @@ class CursorHold(object):
                 self._suppressApplied = False
 
 
+    def _isObserver(self):
+
+
+
+        try:
+            return battle.getSelfPlayerShip() is None
+        except Exception:
+            return True
+
     def request(self, want):
         want = (want is True) or (want == 1)
         if want == self._want:
@@ -73,7 +82,8 @@ class CursorHold(object):
                 self._want = False
                 return
             self._apply(True)
-            self._applySuppress(True)
+            if not self._isObserver():
+                self._applySuppress(True)
         else:
             self.releaseNow()
 
