@@ -4,7 +4,7 @@ API_VERSION = 'API_v1.0'
 MOD_NAME = 'TTaroModUtils'
 
 
-from Codec import _u1, _u6, _u7, _u8, _u9, _u10, _u11
+from Codec import _u1, _u6, _u7, _u8, _u9, _u10, _u11, _u12
 
 
 def logInfo(*args):

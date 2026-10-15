@@ -322,6 +322,10 @@ class Framework(object):
             except Exception:
                 pass
 
+    def setWheelHover(self, over):
+        if self._cursor is not None:
+            self._cursor.hover(over)
+
     def getSelectedTab(self):
         return self._uiState.get(SELECTED_TAB_PATH, '') or ''
 

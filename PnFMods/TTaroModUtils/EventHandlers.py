@@ -34,6 +34,7 @@ class EventHandlers(object):
                 ('mod.stopDragging', self._onStopDragging),
                 ('mod.setUiState', self._onSetUiState),
                 ('mod.setCursorHold', self._onSetCursorHold),
+                ('mod.setWheelHover', self._onSetWheelHover),
                 ('mod.reloadSchemas', self._onReloadSchemas),
             ]
             for name, fn in pairs:
@@ -135,6 +136,12 @@ class EventHandlers(object):
             self._fw.setCursorHold(want)
         except Exception as e:
             logException('mod.setCursorHold ' + str(want), e)
+
+    def _onSetWheelHover(self, over=False):
+        try:
+            self._fw.setWheelHover(over)
+        except Exception as e:
+            logException('mod.setWheelHover ' + str(over), e)
 
     def _onReloadSchemas(self, *args):
         try:

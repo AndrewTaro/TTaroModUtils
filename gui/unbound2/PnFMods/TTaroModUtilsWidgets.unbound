@@ -207,7 +207,7 @@
 
 	(macro TT_TOOLTIP_SYSTEM_DEFAULT_BACKGROUND "true")
 
-	(bindcall externalCall 'inputMapping.onAction' "['battleChat.rollOverChanged', { rollOver: rollOver }]" init=false watch=false (bind trigger "rollOver"))
+	(bindcall externalCall 'direct.action' "['mod.setWheelHover', [rollOver]]" init=false watch=false (bind trigger "rollOver"))
 	(macro TT_MOUSE_EVENTS)
 
 	(style
